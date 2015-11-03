@@ -9,7 +9,7 @@ Dokuwiki returns a soft 404 with this simple message : 'This topic does not exis
 
 As you can see below on this snapshot:
 
-![The illustration](https://github.com/gerardnico/dokuwiki-plugin-404manager/blob/master/images/dokuwiki_200.png "Dokuwiki This topic does not exist yet")
+![The illustration](https://github.com/gerardnico/dokuwiki-plugin-404manager/blob/master/images/dokuwiki_200.jpg "Dokuwiki This topic does not exist yet")
 
 For the website readers, it's not really helpful and it can occur frequently when you use intensively the [plugin pagemove](https://www.dokuwiki.org/plugin:pagemove)
 in order to move page around. The most important problem is that thus external links become obsolete (especially for search engine for instance).
@@ -21,6 +21,7 @@ in order to move page around. The most important problem is that thus external l
   * A message is shown when the page name already exist in other pages.
 
 **Example:**
+
 ![The page name check message](https://github.com/gerardnico/dokuwiki-plugin-404manager/blob/master/images/404manager_check_page_name_message.png)
 
 
