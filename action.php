@@ -106,9 +106,9 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin {
 			    		$this->Vc_Message .= $this->lang['message_pagename_exist_one'];
                         $this->Vc_Message .= '<ul>';
                         foreach($Vl_SamePageNamesId as $PageId => $title){
-					    	if ($conf['useheading']) {
-				        		$title = p_get_first_heading($PageId);	
-				        	}
+					    	if ($title==null) {
+                                $title = $PageId;
+                            }
 				    	    $this->Vc_Message .= '<li>'.
                                 tpl_link(
                                     wl($PageId),
