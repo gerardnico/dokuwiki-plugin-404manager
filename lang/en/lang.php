@@ -14,7 +14,7 @@ $lang['AdminPageName'] = '404Manager Plugin';
 
 //Error Message
 $lang['SameSourceAndTargetAndPage'] = 'The target page and the source page are the same.';
-$lang['NotInternalOrUrlPage'] = 'The target page don\' exist and is not a valid URL.';
+$lang['NotInternalOrUrlPage'] = 'The target page don\'t exist and is not a valid URL';
 $lang['SourcePageExist'] = 'The Source Page exist.';
 
 //FeedBack Message
