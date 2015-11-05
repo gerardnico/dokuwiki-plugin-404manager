@@ -178,7 +178,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin {
 	        				tpl_link(wl($Vl_SourcePage),$this->truncateString($Vl_SourcePage,30),'title="'.$Vl_SourcePage.'" class="wikilink2" rel="nofollow"');
 	        	ptln( '		</td>');
 	        	print '		<td>';
-	        				tpl_link(wl($Vl_Attributes['TargetPage']),$this->truncateString($Vl_Attributes['TargetPage'],30),'title="'.hsc($title).$Vl_Attributes['TargetPage'].'"');
+	        				tpl_link(wl($Vl_Attributes['TargetPage']),$this->truncateString($Vl_Attributes['TargetPage'],30),'title="'.hsc($title).' ('.$Vl_Attributes['TargetPage'].')"');
 	        	ptln( '		</td>');	
 	        	ptln( '		<td>'.$Vl_Attributes['TargetPageType'].'</td>');        				
 	        				if ( $Vl_Attributes['IsValidate'] == 'N' ) {
