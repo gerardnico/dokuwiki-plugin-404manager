@@ -137,8 +137,10 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin {
 //      List of redirection
         ptln( '<h2><a name="list_redirection" id="list_redirection">'.$this->lang['ListOfRedirection'].'</a></h2>');
 	 	ptln( '<div class="level2">');
-	 	 	
-        ptln( '<table class="inline">' );
+
+		ptln( '<div class="table-responsive">');
+
+        ptln( '<table class="table table-hover">' );
     	ptln( '	<thead>' );
       	ptln( '		<tr>' );
         ptln( '			<th>&nbsp;</th>' );
@@ -173,10 +175,10 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin {
 	        				
 	        	ptln( '		</td>');
 	        	print( '	<td>');
-	        				tpl_link(wl($Vl_SourcePage),$Vl_SourcePage,'title="'.$Vl_SourcePage.'" class="wikilink2" rel="nofollow"');
+	        				tpl_link(wl($Vl_SourcePage),$this->truncateString($Vl_SourcePage,30),'title="'.$Vl_SourcePage.'" class="wikilink2" rel="nofollow"');
 	        	ptln( '		</td>');
 	        	print '		<td>';
-	        				tpl_link(wl($Vl_Attributes['TargetPage']),$Vl_Attributes['TargetPage'],'title="'.hsc($title).'"');
+	        				tpl_link(wl($Vl_Attributes['TargetPage']),$this->truncateString($Vl_Attributes['TargetPage'],30),'title="'.hsc($title).$Vl_Attributes['TargetPage'].'"');
 	        	ptln( '		</td>');	
 	        	ptln( '		<td>'.$Vl_Attributes['TargetPageType'].'</td>');        				
 	        				if ( $Vl_Attributes['IsValidate'] == 'N' ) {
@@ -192,7 +194,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin {
 	        	ptln( '		<td>'.$Vl_Attributes['LastRedirectionDate'].'</td>');
 	        	if ( $this->IsValidUrl($Vl_Attributes['LastReferrer'])) {
 	        		print( '	<td>');
-	        				tpl_link($Vl_Attributes['LastReferrer'],$Vl_Attributes['LastReferrer'],'title="'.$Vl_Attributes['LastReferrer'].'" class="urlextern" rel="nofollow"');
+	        				tpl_link($Vl_Attributes['LastReferrer'],$this->truncateString($Vl_Attributes['LastReferrer'],30),'title="'.$Vl_Attributes['LastReferrer'].'" class="urlextern" rel="nofollow"');
 	        		print( '	</td>');
 	        	} else {
 	        		ptln( '		<td>'.$Vl_Attributes['LastReferrer'].'</td>');	
@@ -203,7 +205,8 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin {
   		ptln( '  </tbody>');
   		ptln( '</table>');
   		ptln( '<div class="fn">'.$this->lang['ExplicationValidateRedirection'].'</div>');
-     	ptln( '</div>');	
+     	ptln( '</div>'); //End Tabel responsive
+		ptln( '</div>'); // End level 2
      	
      	// Add a redirection
   	 	ptln( '<h2><a name="add_redirection" id="add_redirection">'.$this->lang['AddModifyRedirection'].'</a></h2>');
@@ -237,6 +240,17 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin {
      	ptln( '</div>');
      
     		        
+    }
+
+    /**
+     * Generate a text with a max length of $length
+     * and add ... if above
+     */
+    function truncateString($myString,$length) {
+        if (strlen($myString)>$length) {
+            $myString = substr($myString, 0, $length).' ...';
+        }
+        return $myString;
     }
     
     /**

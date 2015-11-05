@@ -7,6 +7,45 @@
     font-style: italic;
 }
 
+/* Admin page Css
+   comes from Bootstrap
+*/
+
+.table-responsive {
+
+    box-sizing: border-box;
+    min-height: 0.01%;
+    overflow-x: auto;
+    display: block;
+    unicode-bidi: -moz-isolate;
+    color: #333;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.42857;
+    font-family: sans-serif;
+
+}
+
+.table {
+    margin-bottom: 20px;
+    max-width: 100%;
+    width: 100%;
+}
+table {
+    background-color: transparent;
+    border-collapse: collapse;
+    border-spacing: 0;
+    box-sizing: border-box;
+    display: table;
+    text-indent: 0;
+    color: #333;
+    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    font-size: 14px;
+    line-height: 1.42857;
+}
+
+
+/* alert are messages that appears when the 404 manager does something */
 .alert-warning {
     box-sizing: border-box;
     background-image: linear-gradient(to bottom, #fcf8e3 0px, #f8efc0 100%);
