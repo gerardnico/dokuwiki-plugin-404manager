@@ -179,7 +179,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
                                 $Vl_BestPageId = '';
                                 $Vl_IdToExplode = str_replace('_', ':', $ID);
                                 $Vl_WordsInId = explode(':', $Vl_IdToExplode);
-                                foreach ($Vl_SamePageNamesId as $Vl_PageId) {
+                                foreach ($Vl_SamePageNamesId as $Vl_PageId => $title) {
                                     $Vl_NbWordFound = 0;
                                     foreach ($Vl_WordsInId as $Vl_Word) {
                                         $Vl_NbWordFound = $Vl_NbWordFound + substr_count($Vl_PageId, $Vl_Word);
@@ -213,8 +213,6 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
 
                         case 'GoToBestNamespace':
 
-                            $Vl_Score = 0;
-                            $Vl_BestNamespaceId = '';
                             list($Vl_BestNamespaceId, $Vl_Score) = explode(" ", $this->getBestNamespace($ID));
 
                             if ($Vl_Score > 0) {
