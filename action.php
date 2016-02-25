@@ -20,7 +20,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
     }
 
 
-    function register(&$controller)
+    function register(Doku_Event_Handler $controller)
     {
 
         /* This will call the function _404managerProcess */
