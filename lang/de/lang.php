@@ -40,8 +40,8 @@ $lang['AddModifyRedirection'] = "Hinzufügen/Bearbeiten von Weiterleitungen";
 $lang['ListOfRedirection'] = 'Liste der Weiterleitungen';
 
 //Explication Message
-$lang['ExplicationValidateRedirection'] = 'A validate redirection don\'t show any warning message. A unvalidate redirection is a proposition which comes from an action "Go to best page".';
-$lang['ValidateToSuppressMessage'] = "You must approve (validate) the redirection to suppress the message of redirection.";
+$lang['ExplicationValidateRedirection'] = 'Eine Genehmigte (validierte) Seite zeigt keinen Hinweis bei Umleitung. Eine nicht validierte Seite zeigt den Hinweis "Zur besten Seite wechseln".';
+$lang['ValidateToSuppressMessage'] = "Sie müssen die Umleitung genehmigen (Validieren), um die Benachrichtigung bei der Umleitung zu unterdrücken.";
 
 // Forms Add/Modify Value
 $lang['source_page'] = 'Quell Seite';
@@ -56,13 +56,13 @@ $lang['btn_addmodify'] = 'Hinzufügen/Bearbeiten';
 // ######### Action Message #########
 // ##################################
 
-$lang['message_redirected_by_redirect'] = 'The page ($ID) doesn\'t exist. You have been redirected automatically to the redirect page.';
-$lang['message_redirected_to_edit_mode'] = 'This page doesn\'t exist. You have been redirected automatically in the edit mode.';
-$lang['message_pagename_exist_one'] = 'The following page(s) exists already in other namespace(s) with the same name part: ';
-$lang['message_redirected_to_startpage'] = 'The page ($ID) doesn\'t exist. You have been redirected automatically to the start page of the namespace.';
-$lang['message_redirected_to_bestpagename'] = 'The page ($ID) doesn\'t exist. You have been redirected automatically to the best page.';
-$lang['message_redirected_to_bestnamespace'] = 'The page ($ID) doesn\'t exist. You have been redirected automatically to the best namespace.';
-$lang['message_redirected_to_searchengine'] = 'The page ($ID) doesn\'t exist. You have been redirected automatically to the search engine.';
-$lang['message_come_from'] = 'This message was fired by ';
+$lang['message_redirected_by_redirect'] = 'Die Seite ($ID) existiert nicht. Sie wurden zu der Weiterleitungsseite weitergeleitet.';
+$lang['message_redirected_to_edit_mode'] = 'Diese Seite existiert nicht. Sie wurden automatisch in den Bearbeitungsmodus weitergeleitet.';
+$lang['message_pagename_exist_one'] = 'Die Seite(n) existiert bereits in einem anderen Namensraum : ';
+$lang['message_redirected_to_startpage'] = 'Die Seite ($ID) existiert nicht. Sie wurden automatisch zu der Startseite des Namensraums weitergeleitet..';
+$lang['message_redirected_to_bestpagename'] = 'Die Seite ($ID) existiert nicht. Sie wurden automatisch zu dem nächst besten Treffer weitergeleitet.';
+$lang['message_redirected_to_bestnamespace'] = 'Die Seite ($ID) existiert nicht. Sie wurden zu dem nächst besten Namensraum weitergeleitet.';
+$lang['message_redirected_to_searchengine'] = 'Die Seite ($ID) existiert nicht. Sie wurden automatisch auf die Seite der Suchergebnisse weitergeleitet.';
+$lang['message_come_from'] = 'Diese Nachricht kommt von ';
 
 ?>
