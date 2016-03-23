@@ -51,7 +51,7 @@ You can :
   * set that a writer switch directly to the edit mode
   * set if you want to check if the name page is unique
   * set if you want to see the classic message. A classic message is a message that the user don't need to understand what happened. The 404 Manager have only one classic message and it's when a redirection to the edit mode occur for a writer)
-  * set the weight factor for the [Redirection by best namepage](#redirection by best namepage)
+  * set the weight factor for the [Redirection by best namepage](#redirection-by-best-namepage)
 
 
 ## Settings explained
