@@ -26,10 +26,12 @@ in order to move page around. The most important problem is that thus external l
 
 
 ### For readers
-  * Redirection by configuration of a target page for a source page with the admin page
-  * Redirection by best namepage
+  
+  * Redirection to a target page for a source page with the admin page
+  * Redirection by to the start page of the same namespace
   * Redirection by best namespace
   * Redirection to the internal search engine
+  * and of course Nothing.
 
 
 
@@ -72,19 +74,19 @@ Action, you can perform :
 
 **Why I must validate a redirection ?**
 
-When a redirection occurs, the 404manager plugin insert automatically the redirect in this list.
+When a redirection occurs, the 404manager plugin insert automatically the redirection in this list.
 
 In this way :
-  * You can see thus which redirect occur, when, where and how many time.
-  * The 404manager plugin use it as a cache. If the same page is asked, it can retrieve easily the target page.
+  * You can see thus which redirect occurs, when, where and how many time.
+  * The 404manager plugin uses it as a cache. If the same page is asked, it can retrieve easily the target page.
 
-To be sure that the reader is not totally lost because he ask for one page and he have an other page, the 404 manager plugin fired a message. If you validate the redirection, this message disappear.
+To be sure that the reader is not totally lost because he asks for one page and he have an other page, the 404 manager plugin fired a message. If you validate the redirection, this message disappears.
 
 This action is always performed first in the process of redirection for a reader.
 
 ### Redirection by best namepage
 
-The redirection by best namepage is an simpe algorithm which occurs to find the best page.
+The redirection by best namepage is an simpe algorithm which occurs to find the best page by name.
 
 It calculate a score for two kinds of page :
 
@@ -133,7 +135,4 @@ The query performed is an explode of the page asked.
 ## Language
 The plugin is only translated in English but you can translate it in your own language.
 
-Just copy the directory "lang/en", rename it in your own language (For instance, for france, to lang/fr) and translate the files.
-
-
-
+Just copy the directory [lang/en](lang/en), rename it in your own language (For instance, for france, to lang/fr) and translate the files.

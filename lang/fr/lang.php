@@ -55,13 +55,13 @@ $lang['btn_addmodify'] = 'Ajouter/Modifier';
 // ##      Messages d'action       ##
 // ##################################
 
-$lang['message_redirected_by_redirect'] = 'La page ($ID) n\'existe pas. Vous avez été redirigé sur une page spécifique.';
+$lang['message_redirected_by_redirect'] = 'La page (%s) n\'existe pas. Vous avez été redirigé sur une page spécifique.';
 $lang['message_redirected_to_edit_mode'] = 'La page n\'existe pas. Vous êtes maintenant en mode d\'édition afin de créer celle-ci.';
 $lang['message_pagename_exist_one'] = 'La/Les page(s) suivante(s) existent déjà dans un autre espace de noms avec l\'un des mots suivants : ';
-$lang['message_redirected_to_startpage'] = 'La page ($ID) n\'existe pas. Vous avez été automatiquement redirigé vers la page initiale de l\'espace de noms.';
-$lang['message_redirected_to_bestpagename'] = 'La page ($ID) n\'existe pas. Vous avez été automatiquement redirigé vers la meilleure page correspondante.';
-$lang['message_redirected_to_bestnamespace'] = 'La page ($ID) n\'existe pas. Vous avez été automatiquement redirigé vers le meilleur.';
-$lang['message_redirected_to_searchengine'] = 'La page ($ID) n\'existe pas. Vous avez été automatiquement redirigé vers le moteur de recherche.';
+$lang['message_redirected_to_startpage'] = 'La page (%s) n\'existe pas. Vous avez été automatiquement redirigé vers la page initiale de l\'espace de noms.';
+$lang['message_redirected_to_bestpagename'] = 'La page (%s) n\'existe pas. Vous avez été automatiquement redirigé vers la meilleure page correspondante.';
+$lang['message_redirected_to_bestnamespace'] = 'La page (%s) n\'existe pas. Vous avez été automatiquement redirigé vers le meilleur.';
+$lang['message_redirected_to_searchengine'] = 'La page (%s) n\'existe pas. Vous avez été automatiquement redirigé vers le moteur de recherche.';
 $lang['message_come_from'] = 'Ce message a été envoyé par ';
 
 ?>

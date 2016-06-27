@@ -55,13 +55,13 @@ $lang['btn_addmodify'] = 'Add/Modify';
 // ######### Action Message #########
 // ##################################
 
-$lang['message_redirected_by_redirect'] = 'The page ($ID) doesn\'t exist. You have been redirected automatically to the redirect page.';
+$lang['message_redirected_by_redirect'] = 'The page (%s) doesn\'t exist. You have been redirected automatically to the redirect page.';
 $lang['message_redirected_to_edit_mode'] = 'This page doesn\'t exist. You have been redirected automatically in the edit mode.';
 $lang['message_pagename_exist_one'] = 'The following page(s) exists already in other namespace(s) with the same name part: ';
-$lang['message_redirected_to_startpage'] = 'The page ($ID) doesn\'t exist. You have been redirected automatically to the start page of the namespace.';
-$lang['message_redirected_to_bestpagename'] = 'The page ($ID) doesn\'t exist. You have been redirected automatically to the best page.';
-$lang['message_redirected_to_bestnamespace'] = 'The page ($ID) doesn\'t exist. You have been redirected automatically to the best namespace.';
-$lang['message_redirected_to_searchengine'] = 'The page ($ID) doesn\'t exist. You have been redirected automatically to the search engine.';
+$lang['message_redirected_to_startpage'] = 'The page (%s) doesn\'t exist. You have been redirected automatically to the start page of the namespace.';
+$lang['message_redirected_to_bestpagename'] = 'The page (%s) doesn\'t exist. You have been redirected automatically to the best page.';
+$lang['message_redirected_to_bestnamespace'] = 'The page (%s) doesn\'t exist. You have been redirected automatically to the best namespace.';
+$lang['message_redirected_to_searchengine'] = 'The page (%s) doesn\'t exist. You have been redirected automatically to the search engine.';
 $lang['message_come_from'] = 'This message was fired by ';
 
 ?>

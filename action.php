@@ -7,14 +7,36 @@ require_once(DOKU_PLUGIN . 'action.php');
 class action_plugin_404manager extends DokuWiki_Action_Plugin
 {
 
-    var $Vc_Is404Fired = 'N';
-    var $Vc_Message = '';
-    var $Vc_TypeMessage = 'Classic';
-    var $Vc_OldId = '';
+    var $message = '';
+    var $messageType = 'Classic';
+
+
+    var $targetId = '';
+    var $sourceId = '';
+
+    // The redirect source
+    const REDIRECT_SOURCE_REDIRECT = 'redirect';
+    const REDIRECT_SOURCE_START_PAGE = 'startPage';
+    const REDIRECT_SOURCE_BEST_PAGE_NAME = 'bestPageName';
+    const REDIRECT_SOURCE_BEST_NAMESPACE = 'bestNamespace';
+
+    /**
+     * The object that holds all management function
+     * @var admin_plugin_404manager
+     */
+    var $redirectManager;
+
+    /*
+     * The event scope is made object
+     */
+    var $event;
+
+    // The action name is used as check / communication channel between function hooks.
+    // It will comes in the global $ACT variable
+    const ACTION_NAME = '404manager';
 
     function action_plugin_404manager()
     {
-        $this->Vc_Is404Fired = 'N';
         // enable direct access to language strings
         $this->setupLocale();
     }
@@ -23,294 +45,271 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
     function register(Doku_Event_Handler $controller)
     {
 
-        /* This will call the function _404managerProcess */
-        $controller->register_hook('ACTION_ACT_PREPROCESS',
+        /* This will call the function _handle404 */
+        $controller->register_hook('DOKUWIKI_STARTED',
             'AFTER',
             $this,
-            '_404managerProcess',
+            '_handle404',
             array());
 
-        /* This will call the function _404managerMessage */
+        /* This will call the function _displayRedirectMessage */
         $controller->register_hook(
             'TPL_ACT_RENDER',
             'BEFORE',
             $this,
-            '_404managerMessage',
+            '_displayRedirectMessage',
             array()
         );
+
     }
 
-    function _404managerProcess(&$e, $param)
+    /**
+     * Verify it their is a 404
+     * Code comes from <a href="https://github.com/splitbrain/dokuwiki-plugin-notfound/blob/master/action.php">Not Found Plugin</a>
+     * @param $event Doku_Event
+     * @param $param
+     * @return bool
+     */
+    function _handle404(&$event, $param)
     {
 
+        global $ACT;
+        if ($ACT != 'show') return false;
+
+        global $INFO;
+        if ($INFO['exists']) return false;
+
+        // We instantiate the redirect manager because it's use overall
+        // it holds the function and methods
+        require_once(dirname(__FILE__) . '/admin.php');
+        $this->redirectManager = new admin_plugin_404manager();
+        // Event is also used in some subfunction, we make it them object scope
+        $this->event = $event;
+
+
+        // Global variable needed in the process
         global $ID;
-        global $QUERY;
         global $conf;
+        $targetPage = $this->redirectManager->getTargetResource($ID);
 
-        $Vl_PageName = noNS($ID);
+        // If this is an external redirect
+        if ($this->redirectManager->isValidURL($targetPage) && $targetPage) {
 
-        // If the page does not exist and the action is show
-        if (!page_exists($ID) && $e->data == 'show') {
+            $this->redirectManager->updateRedirectionMetaData($ID);
+            send_redirect($targetPage);
+            exit;
 
-            $this->Vc_Is404Fired = 'Y';
-
-            // Redirect if a redirection is set
-            require_once(dirname(__FILE__) . '/admin.php');
-            $RedirectManager = new admin_plugin_404manager();
-            if ($RedirectManager->IsRedirectionPresent($ID)) {
-
-                $TargetPage = $RedirectManager->GetTargetPage($ID);
-
-                // The Target page can be moved
-                if (page_exists($TargetPage)) {
-                    $RedirectManager->SetRedirectionActionData($ID);
-                    if ($RedirectManager->IsValidURL($TargetPage)) {
-                        header('Location: ' . $TargetPage);
-                        exit;
-                    } else {
-                        if ($RedirectManager->GetIsValidate($ID) == 'N') {
-                            $this->Vc_Message = $this->lang['message_redirected_by_redirect'];
-                            $this->Vc_TypeMessage = 'Warning';
-                        }
-                        $this->RedirectToId($TargetPage);
-                    }
-                    return;
-                }
-            }
-
-            //Search same page name
-            require_once(DOKU_INC . 'inc/fulltext.php');
-            $Vl_SamePageNamesId = ft_pageLookup($Vl_PageName);
-
-            //If the user have right to edit
-            if ($_SERVER['REMOTE_USER']) {
-                $perm = auth_quickaclcheck($ID);
-            } else {
-                $perm = auth_aclcheck($ID, '', null);
-            }
-
-            // Action for a writer user
-            if ($perm >= AUTH_EDIT && $this->getConf('GoToEditMode') == 1) {
-
-                $e->data = 'edit';
-
-                // If this is a side bar no message.
-                // There is always other page with the same name
-                if ($Vl_PageName != $conf['sidebar']) {
-
-                    if ($this->getConf('ShowMessageClassic') == 1) {
-                        $this->Vc_Message = $this->lang['message_redirected_to_edit_mode'];
-                        $this->Vc_TypeMessage = 'Classic';
-                    }
-
-                    // If Param show page name unique and it's not a start page
-                    if ($this->getConf('ShowPageNameIsNotUnique') == 1 && $Vl_PageName <> $conf['start']) {
-                        if (count($Vl_SamePageNamesId) > 0) {
-                            $this->Vc_TypeMessage = 'Warning';
-                            if ($this->Vc_Message <> '') {
-                                $this->Vc_Message .= '<br/><br/>';
-                            }
-                            $this->Vc_Message .= $this->lang['message_pagename_exist_one'];
-                            $this->Vc_Message .= '<ul>';
-                            foreach ($Vl_SamePageNamesId as $PageId => $title) {
-                                if ($title == null) {
-                                    $title = $PageId;
-                                }
-                                $this->Vc_Message .= '<li>' .
-                                    tpl_link(
-                                        wl($PageId),
-                                        $title,
-                                        'class="" rel="nofollow" title="' . $title . '"',
-                                        $return = true
-                                    ) . '</li>';
-                            }
-                            $this->Vc_Message .= '</ul>';
-                        }
-                    }
-                }
-                return;
-            }
-
-            // User not allowed to edit the page (public of other)
-            if ($perm < AUTH_EDIT && $this->getConf('ActionReaderFirst') <> 'Nothing') {
-
-                $Vl_ActionToPerform = array();
-                $Vl_ActionToPerform[0] = $this->getConf('ActionReaderFirst');
-                $Vl_ActionToPerform[1] = $this->getConf('ActionReaderSecond');
-                $Vl_ActionToPerform[2] = $this->getConf('ActionReaderThird');
-
-                $i = 0;
-                while (isset($Vl_ActionToPerform[$i])) {
-
-                    switch ($Vl_ActionToPerform[$i]) {
-
-                        case 'Nothing':
-                            return;
-                            break;
-
-                        case 'GoToNsStartPage':
-
-                            $Vl_IdStartPage = getNS($ID) . ':' . $conf['start'];
-                            if (page_exists($Vl_IdStartPage)) {
-                                $this->Vc_Message = $this->lang['message_redirected_to_startpage'];
-                                $this->Vc_TypeMessage = 'Warning';
-                                $this->RedirectToId($Vl_IdStartPage);
-                                return;
-                            }
-                            $Vl_IdStartPage = getNS($ID) . ':' . curNS($ID);
-                            if (page_exists($Vl_IdStartPage)) {
-                                $this->Vc_Message = $this->lang['message_redirected_to_startpage'];
-                                $this->Vc_TypeMessage = 'Warning';
-                                $this->RedirectToId($Vl_IdStartPage);
-                                return;
-                            }
-                            break;
-
-                        case 'GoToBestPageName':
-
-                            $Vl_ScorePageName = 0;
-                            $Vl_BestPageId = '';
-
-                            //Get Score from a page
-                            if (count($Vl_SamePageNamesId) > 0) {
-
-                                // Search same namespace in the page found than in the Id page asked.
-                                $Vl_BestNbWordFound = 0;
-                                $Vl_BestPageId = '';
-                                $Vl_IdToExplode = str_replace('_', ':', $ID);
-                                $Vl_WordsInId = explode(':', $Vl_IdToExplode);
-                                foreach ($Vl_SamePageNamesId as $Vl_PageId => $title) {
-                                    $Vl_NbWordFound = 0;
-                                    foreach ($Vl_WordsInId as $Vl_Word) {
-                                        $Vl_NbWordFound = $Vl_NbWordFound + substr_count($Vl_PageId, $Vl_Word);
-                                    }
-
-                                    if ($Vl_NbWordFound >= $Vl_BestNbWordFound) {
-                                        $Vl_BestNbWordFound = $Vl_NbWordFound;
-                                        $Vl_BestPageId = $Vl_PageId;
-                                    }
-                                }
-                                $Vl_ScorePageName = $this->getConf('WeightFactorForSamePageName') + $Vl_BestNbWordFound * $this->getConf('WeightFactorForSameNamespace');
-                            }
-
-//							Get Score from a Namespace
-                            $Vl_ScoreNamespace = 0;
-                            $Vl_BestNamespaceId = '';
-                            list($Vl_BestNamespaceId, $Vl_ScoreNamespace) = explode(" ", $this->getBestNamespace($ID));
-
-//				        	Compare the two score
-                            if ($Vl_ScorePageName > 0 or $Vl_ScoreNamespace > 0) {
-                                if ($Vl_ScorePageName > $Vl_ScoreNamespace) {
-                                    $this->RedirectToId($Vl_BestPageId);
-                                } else {
-                                    $this->RedirectToId($Vl_BestNamespaceId);
-                                }
-                                $this->Vc_Message = $this->lang['message_redirected_to_bestpagename'];
-                                $this->Vc_TypeMessage = 'Warning';
-                                return;
-                            }
-                            break;
-
-                        case 'GoToBestNamespace':
-
-                            list($Vl_BestNamespaceId, $Vl_Score) = explode(" ", $this->getBestNamespace($ID));
-
-                            if ($Vl_Score > 0) {
-                                $this->Vc_Message = $this->lang['message_redirected_to_bestnamespace'];
-                                $this->Vc_TypeMessage = 'Warning';
-                                $this->RedirectToId($Vl_BestNamespaceId);
-                                return;
-                            }
-                            break;
-
-                        case 'GoToSearchEngine':
-                            //do fulltext search
-                            $this->Vc_Message = $this->lang['message_redirected_to_searchengine'];
-                            $this->Vc_TypeMessage = 'Warning';
-                            $QUERY = str_replace(':', '_', $ID);
-                            $e->data = 'search';
-                            break;
-
-                        // End Switch Action
-                    }
-
-                    $i++;
-                    // End While Action
-                }
-                // End if not connected
-            }
-            // End if page exist
         }
-        //End Fonction
+
+        // Internal redirect
+
+        // Their is one action for a writer:
+        //   * edit mode direct
+        // If the user is a writer (It have the right to edit).
+        If ($this->userCanWrite() && $this->getConf('GoToEditMode') == 1) {
+
+            $this->gotToEditMode($event);
+            // Stop here
+            return true;
+
+        }
+
+        // This is a reader
+        // Their are only three actions for a reader:
+        //   * redirect to a page (show another page id)
+        //   * go to the search page
+        //   * do nothing
+
+
+
+        // If a redirection is already known, this means that this is not the first
+        // case that we get this redirection
+        // The page must exist of be an external URL
+        if ($targetPage && (page_exists($targetPage) || $this->redirectManager->isValidURL($targetPage))) {
+
+            $this->redirectToDokuwikiPage($targetPage, self::REDIRECT_SOURCE_REDIRECT);
+            return true;
+
+        }
+
+        // We are still a reader, the user not allowed to edit the page (public of other)
+        if ($this->getConf('ActionReaderFirst') == 'Nothing') {
+            return true;
+        }
+
+        // We are reader and their is no redirection set, we apply the algorithm
+        $readerAlgorithms = array();
+        $readerAlgorithms[0] = $this->getConf('ActionReaderFirst');
+        $readerAlgorithms[1] = $this->getConf('ActionReaderSecond');
+        $readerAlgorithms[2] = $this->getConf('ActionReaderThird');
+
+        $i = 0;
+        while (isset($readerAlgorithms[$i])) {
+
+            switch ($readerAlgorithms[$i]) {
+
+                case 'Nothing':
+                    return;
+                    break;
+
+                case 'GoToNsStartPage':
+
+                    // Start page with the conf['start'] parameter
+                    $startPage = getNS($ID) . ':' . $conf['start'];
+                    if (page_exists($startPage)) {
+                        $this->redirectToDokuwikiPage($startPage, self::REDIRECT_SOURCE_START_PAGE);
+                        return;
+                    }
+                    // Start page with the same name than the namespace
+                    $startPage = getNS($ID) . ':' . curNS($ID);
+                    if (page_exists($startPage)) {
+                        $this->redirectToDokuwikiPage($startPage, self::REDIRECT_SOURCE_START_PAGE);
+                        return;
+                    }
+                    break;
+
+                case 'GoToBestPageName':
+
+                    $scorePageName = 0;
+                    $bestPageId = '';
+
+                    //Search same page name
+                    require_once(DOKU_INC . 'inc/fulltext.php');
+                    $pageName = noNS($ID);
+                    $pagesWithSameName = ft_pageLookup($pageName);
+
+                    //Get Score from a page
+                    if (count($pagesWithSameName) > 0) {
+
+                        // Search same namespace in the page found than in the Id page asked.
+                        $bestNbWordFound = 0;
+                        $bestPageId = '';
+                        $idToExplode = str_replace('_', ':', $ID);
+                        $wordsInId = explode(':', $idToExplode);
+                        foreach ($pagesWithSameName as $Vl_PageId => $title) {
+                            $Vl_NbWordFound = 0;
+                            foreach ($wordsInId as $Vl_Word) {
+                                $Vl_NbWordFound = $Vl_NbWordFound + substr_count($Vl_PageId, $Vl_Word);
+                            }
+
+                            if ($Vl_NbWordFound >= $bestNbWordFound) {
+                                $bestNbWordFound = $Vl_NbWordFound;
+                                $bestPageId = $Vl_PageId;
+                            }
+                        }
+                        $scorePageName = $this->getConf('WeightFactorForSamePageName') + $bestNbWordFound * $this->getConf('WeightFactorForSameNamespace');
+                    }
+
+                    // Get Score from a Namespace
+                    list($bestNamespaceId, $Vl_ScoreNamespace) = explode(" ", $this->getBestNamespace($ID));
+
+                    // Compare the two score
+                    if ($scorePageName > 0 or $Vl_ScoreNamespace > 0) {
+                        if ($scorePageName > $Vl_ScoreNamespace) {
+                            $this->redirectToDokuwikiPage($bestPageId, self::REDIRECT_SOURCE_BEST_PAGE_NAME);
+                        } else {
+                            $this->redirectToDokuwikiPage($bestNamespaceId,  self::REDIRECT_SOURCE_BEST_PAGE_NAME);
+                        }
+                        return;
+                    }
+                    break;
+
+                case 'GoToBestNamespace':
+
+                    list($bestNamespaceId, $score) = explode(" ", $this->getBestNamespace($ID));
+
+                    if ($score > 0) {
+                        $this->redirectToDokuwikiPage($bestNamespaceId,self::REDIRECT_SOURCE_BEST_NAMESPACE);
+                        return true;
+                    }
+                    break;
+
+                case 'GoToSearchEngine':
+
+                    //do fulltext search
+                    $this->message = sprintf($this->lang['message_redirected_to_searchengine'],hsc($ID));
+                    $this->messageType = 'Warning';
+
+                    global $QUERY;
+                    $QUERY = str_replace(':', ' ', $ID);
+                    $ACT = 'search';
+
+                    return true;
+                    break;
+
+                // End Switch Action
+            }
+
+            $i++;
+            // End While Action
+        }
+        // End if not connected
+
+        return true;
+
     }
+
 
     /**
      * Main function; dispatches the visual comment actions
+     * @param   $event Doku_Event
      */
-    function _404managerMessage(&$event, $param)
+    function _displayRedirectMessage(&$event, $param)
     {
 
-        global $ID;
+        if ($event->data == 'show' || $event->data == 'edit' || $event->data == 'search') {
 
-        if ($this->Vc_Is404Fired == 'Y' && $this->Vc_Message <> '') {
-            global $INFO;
-            if ($this->Vc_TypeMessage == 'Classic') {
-                ptln('<div class="alert alert-success" role="alert">');
-            } else {
-                ptln('<div class="alert alert-warning" role="alert">');
-            }
-            If ($this->OldId <> '') {
-                $Vl_Message = str_replace('$ID', $this->OldId, $this->Vc_Message);
-            } else {
-                $Vl_Message = str_replace('$ID', $ID, $this->Vc_Message);
+
+            // load left over messages from redirect
+            // See method redirectToDokuwikiPage
+            if (isset($_SESSION[DOKU_COOKIE]['404manager_msg'])) {
+                $msg = $_SESSION[DOKU_COOKIE]['404manager_msg'];
+                $this->message = $msg['content'];
+                $this->messageType = $msg['type'];
+                // Session start seems important if we want to unset the variable
+                @session_start();
+                unset($_SESSION[DOKU_COOKIE]['404manager_msg']);
+
             }
 
-            print $Vl_Message;
-            print '<div class="managerreference">' . $this->lang['message_come_from'] . ' <a href="' . $INFO['url'] . '" class="urlextern" title="' . $INFO['desc'] . '"  rel="nofollow">' . $INFO['name'] . '</a>.</div>';
-            ptln('</div>');
+            if ($this->message) {
+
+                $pluginInfo = $this->getInfo();
+                // a class can not start with a number then 404manager is not a valid class name
+                $redirectManagerClass = "redirect-manager";
+
+                if ($this->messageType == 'Classic') {
+                    ptln('<div class="alert alert-success ' . $redirectManagerClass . '" role="alert">');
+                } else {
+                    ptln('<div class="alert alert-warning ' . $redirectManagerClass . '" role="alert">');
+                }
+                print $this->message;
+
+
+                print '<div class="managerreference">' . $this->lang['message_come_from'] . ' <a href="' . $pluginInfo['url'] . '" class="urlextern" title="' . $pluginInfo['desc'] . '"  rel="nofollow">' . $pluginInfo['name'] . '</a>.</div>';
+                print('</div>');
+
+            }
+
         }
     }
 
-    /**
-     * Handle the Redirection to an id or the search engine
-     */
-    function RedirectToId($Vl_Id)
-    {
-
-        global $ID;
-
-        //If the user have right to see the page
-        if ($_SERVER['REMOTE_USER']) {
-            $perm = auth_quickaclcheck($Vl_Id);
-        } else {
-            $perm = auth_aclcheck($Vl_Id, '', null);
-        }
-        require_once(dirname(__FILE__) . '/admin.php');
-        $RedirectManager = new admin_plugin_404manager();
-        $RedirectManager->SetRedirection($ID, $Vl_Id);
-        if ($perm > AUTH_NONE) {
-            $this->OldId = $ID;
-            $ID = $Vl_Id;
-        }
-
-    }
 
     /**
      * getBestNamespace
      * Return a list with 'BestNamespaceId Score'
      */
-    function getBestNamespace($Vl_ID)
+    function getBestNamespace($id)
     {
 
         global $conf;
 
-        $Vl_ListNamespaceId = array();
         $Vl_ListNamespaceId = ft_pageLookup($conf['start']);
 
         $Vl_BestNbWordFound = 0;
         $Vl_BestNamespaceId = '';
 
-        $Vl_IdToExplode = str_replace('_', ':', $Vl_ID);
+        $Vl_IdToExplode = str_replace('_', ':', $id);
         $Vl_WordsInId = explode(':', $Vl_IdToExplode);
 
         foreach ($Vl_ListNamespaceId as $Vl_NamespaceId) {
@@ -337,5 +336,154 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         }
         return $Vl_BestNamespaceId . " " . $Vl_Score;
     }
+
+    /**
+     * @param $event
+     */
+    private function gotToEditMode(&$event)
+    {
+        global $ID;
+        global $conf;
+
+
+        global $ACT;
+        $ACT = 'edit';
+
+        // If this is a side bar no message.
+        // There is always other page with the same name
+        $pageName = noNS($ID);
+        if ($pageName != $conf['sidebar']) {
+
+            if ($this->getConf('ShowMessageClassic') == 1) {
+                $this->message = $this->lang['message_redirected_to_edit_mode'];
+                $this->messageType = 'Classic';
+            }
+
+            // If Param show page name unique and it's not a start page
+            if ($this->getConf('ShowPageNameIsNotUnique') == 1 && $pageName <> $conf['start']) {
+
+                //Search same page name
+                require_once(DOKU_INC . 'inc/fulltext.php');
+                $pagesWithSameName = ft_pageLookup($pageName);
+
+                if (count($pagesWithSameName) > 0) {
+                    $this->messageType = 'Warning';
+                    if ($this->message <> '') {
+                        $this->message .= '<br/><br/>';
+                    }
+                    $this->message .= $this->lang['message_pagename_exist_one'];
+                    $this->message .= '<ul>';
+                    foreach ($pagesWithSameName as $PageId => $title) {
+                        if ($title == null) {
+                            $title = $PageId;
+                        }
+                        $this->message .= '<li>' .
+                            tpl_link(
+                                wl($PageId),
+                                $title,
+                                'class="" rel="nofollow" title="' . $title . '"',
+                                $return = true
+                            ) . '</li>';
+                    }
+                    $this->message .= '</ul>';
+                }
+            }
+        }
+
+
+    }
+
+    /**
+     * Return if the user has the right/permission to create/write an article
+     * @return bool
+     */
+    private function userCanWrite()
+    {
+        global $ID;
+
+        if ($_SERVER['REMOTE_USER']) {
+            $perm = auth_quickaclcheck($ID);
+        } else {
+            $perm = auth_aclcheck($ID, '', null);
+        }
+
+        if ($perm >= AUTH_EDIT) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * Redirect to an internal page, no external resources
+     * @param $targetPage the target page id or an URL
+     * @param string|the $redirectSource the source of the redirect
+     */
+    private function redirectToDokuwikiPage($targetPage, $redirectSource = 'Not Known')
+    {
+
+        global $ID;
+
+        $this->redirectManager->updateRedirectionMetaData($ID);
+
+        switch ($redirectSource) {
+
+            case self::REDIRECT_SOURCE_REDIRECT:
+                // This is an internal ID
+                if ($this->redirectManager->getIsValidate($ID) == 'N') {
+                    $this->message = sprintf($this->lang['message_redirected_by_redirect'],hsc($ID));
+                    $this->messageType = 'Warning';
+                };
+                break;
+
+            case self::REDIRECT_SOURCE_START_PAGE:
+                $this->message = sprintf($this->lang['message_redirected_to_startpage'],hsc($ID));
+                $this->messageType = 'Warning';
+                break;
+
+            case  self::REDIRECT_SOURCE_BEST_PAGE_NAME:
+                $this->message = sprintf($this->lang['message_redirected_to_bestpagename'],hsc($ID));
+                $this->messageType = 'Warning';
+                break;
+
+            case self::REDIRECT_SOURCE_BEST_NAMESPACE:
+                $this->message = sprintf($this->lang['message_redirected_to_bestnamespace'],hsc($ID));
+                $this->messageType = 'Warning';
+                break;
+
+        }
+
+
+        //If the user have right to see the page
+        if ($_SERVER['REMOTE_USER']) {
+            $perm = auth_quickaclcheck($ID);
+        } else {
+            $perm = auth_aclcheck($ID, '', null);
+        }
+
+        $this->redirectManager->addRedirection($ID, $targetPage);
+        if ($perm > AUTH_NONE) {
+
+            // Keep the message in session for display
+            //reopen session, store data and close session again
+            @session_start();
+            $msg['content']=$this->message;
+            $msg['type']=$this->messageType;
+            $_SESSION[DOKU_COOKIE]['404manager_msg'] = $msg;
+            // always close the session
+            session_write_close();
+
+            $link = explode('#', $targetPage, 2);
+            // TODO: Status code
+            // header('HTTP/1.1 301 Moved Permanently');
+            send_redirect(wl($link[0] ,'',true) . '#' . rawurlencode($link[1]));
+            exit();
+
+        }
+
+
+
+    }
+
 
 }

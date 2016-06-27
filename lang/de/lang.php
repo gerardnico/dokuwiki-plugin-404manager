@@ -56,13 +56,13 @@ $lang['btn_addmodify'] = 'Hinzufügen/Bearbeiten';
 // ######### Action Message #########
 // ##################################
 
-$lang['message_redirected_by_redirect'] = 'Die Seite ($ID) existiert nicht. Sie wurden zu der Weiterleitungsseite weitergeleitet.';
+$lang['message_redirected_by_redirect'] = 'Die Seite (%s) existiert nicht. Sie wurden zu der Weiterleitungsseite weitergeleitet.';
 $lang['message_redirected_to_edit_mode'] = 'Diese Seite existiert nicht. Sie wurden automatisch in den Bearbeitungsmodus weitergeleitet.';
-$lang['message_pagename_exist_one'] = 'Die Seite(n) existiert bereits in einem anderen Namensraum : ';
-$lang['message_redirected_to_startpage'] = 'Die Seite ($ID) existiert nicht. Sie wurden automatisch zu der Startseite des Namensraums weitergeleitet..';
-$lang['message_redirected_to_bestpagename'] = 'Die Seite ($ID) existiert nicht. Sie wurden automatisch zu dem nächst besten Treffer weitergeleitet.';
-$lang['message_redirected_to_bestnamespace'] = 'Die Seite ($ID) existiert nicht. Sie wurden zu dem nächst besten Namensraum weitergeleitet.';
-$lang['message_redirected_to_searchengine'] = 'Die Seite ($ID) existiert nicht. Sie wurden automatisch auf die Seite der Suchergebnisse weitergeleitet.';
+$lang['message_pagename_exist_one'] = 'Die Seite(%s) existiert bereits in einem anderen Namensraum : ';
+$lang['message_redirected_to_startpage'] = 'Die Seite (%s) existiert nicht. Sie wurden automatisch zu der Startseite des Namensraums weitergeleitet..';
+$lang['message_redirected_to_bestpagename'] = 'Die Seite (%s) existiert nicht. Sie wurden automatisch zu dem nächst besten Treffer weitergeleitet.';
+$lang['message_redirected_to_bestnamespace'] = 'Die Seite (%s) existiert nicht. Sie wurden zu dem nächst besten Namensraum weitergeleitet.';
+$lang['message_redirected_to_searchengine'] = 'Die Seite (%s) existiert nicht. Sie wurden automatisch auf die Seite der Suchergebnisse weitergeleitet.';
 $lang['message_come_from'] = 'Diese Nachricht kommt von ';
 
 ?>

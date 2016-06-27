@@ -15,37 +15,32 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin {
 	// Variable var and not public/private because php4 can't handle this kind of variable
 	
 	// To handle the redirection data
-	var $Vc_DataFileLocation = '';
-	var $Vc_RedirectData = array();
+	var $pageRedirectionsFilePath = '';
+	var $pageRedirections = array();
 	
 	// Use to pass parameter between the handle and the html function to keep the form data 
-	var $Vc_SourcePage = '';
-    var $Vc_TargetPage = '';
-    var $Vc_CurrentDate = '';
-    var $Vc_IsValidate = '';
-    var $Vc_TargetPageType = 'Default';
-	
-	function admin_plugin_404manager(){
+	var $sourcePageId = '';
+    var $targetResource = '';
+    var $currentDate = '';
+    var $isValidate = '';
+    var $targetResourceType = 'Default';
+    private $infoPlugin;
+
+    function admin_plugin_404manager(){
 		
 		//Set the redirection data
-		$this->Vc_DataFileLocation = dirname(__FILE__).'/404managerRedirect.conf';
-		if(@file_exists($this->Vc_DataFileLocation)) {
-				$this->Vc_RedirectData = unserialize(io_readFile($this->Vc_DataFileLocation, false));	
+		$this->pageRedirectionsFilePath = dirname(__FILE__).'/404managerRedirect.conf';
+		if(@file_exists($this->pageRedirectionsFilePath)) {
+				$this->pageRedirections = unserialize(io_readFile($this->pageRedirectionsFilePath, false));
 		}
 	 	
 	 	// enable direct access to language strings
-	 	// of use of $this_>getLang
+	 	// of use of $this->getLang
         $this->setupLocale();
-        $this->InfoPlugIn = $this->getInfo();
-        $this->Vc_CurrentDate = date("d/m/Y");
+        $this->currentDate = date("d/m/Y");
+        $this->infoPlugin = $this->getInfo();
 	}
-	
-    /**
-     * return some info
-     */
-    function getInfo(){
-        return confToHash(dirname(__FILE__).'/info.txt');
-    }
+
 
     /**
      * Access for managers allowed
@@ -63,13 +58,15 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin {
 
     /**
      * return prompt for admin menu
+     * @param string $language
+     * @return string
      */
     function getMenuText($language) {
-        $Vl_MenuText = $this->lang['AdminPageName'];
-		if ( $Vl_MenuText == '' ) {
-			$Vl_MenuText = $this->InfoPlugIn['name'];
+        $menuText = $this->lang['AdminPageName'];
+		if ( $menuText == '' ) {
+			$menuText = $this->infoPlugin['name'];
 		}
-		return $Vl_MenuText;
+		return $menuText;
     }
 
     /**
@@ -78,48 +75,48 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin {
     function handle() {
         if($_POST['Add']){
         	
-        	$this->Vc_SourcePage = $_POST['SourcePage'];
-        	$this->Vc_TargetPage = $_POST['TargetPage'];       	
+        	$this->sourcePageId = $_POST['SourcePage'];
+        	$this->targetResource = $_POST['TargetPage'];
         	
-        	if ( $this->Vc_SourcePage == $this->Vc_TargetPage ) {
-        		msg($this->lang['SameSourceAndTargetAndPage'].': '.$this->Vc_SourcePage.'',-1);
+        	if ( $this->sourcePageId == $this->targetResource ) {
+        		msg($this->lang['SameSourceAndTargetAndPage'].': '.$this->sourcePageId.'',-1);
         		return;
         	}
         	
-	        if ( !page_exists($this->Vc_TargetPage) ) {
-	        	if ($this->IsValidURL($this->Vc_TargetPage)) {
-	        		$this->Vc_TargetPageType = 'Url';
+	        if ( !page_exists($this->targetResource) ) {
+	        	if ($this->isValidURL($this->targetResource)) {
+	        		$this->targetResourceType = 'Url';
 	        	} else {
-	        		msg($this->lang['NotInternalOrUrlPage'].': '.$this->Vc_TargetPage.'',-1);
+	        		msg($this->lang['NotInternalOrUrlPage'].': '.$this->targetResource.'',-1);
 	        		return;	
 	        	}
 	        } else {
-	        	$this->Vc_TargetPageType = 'Internal Page'; 
+	        	$this->targetResourceType = 'Internal Page';
 	        }
 
 			global $conf;
-	        if ( page_exists($this->Vc_SourcePage) ) {
+	        if ( page_exists($this->sourcePageId) ) {
 	        	$title = false;
 	        	if ($conf['useheading']) {
-	        		$title = p_get_first_heading($this->Vc_SourcePage);	
+	        		$title = p_get_first_heading($this->sourcePageId);
 	        	}
-      			if(!$title) $title = $this->Vc_SourcePage;
-	        	msg($this->lang['SourcePageExist'].' : <a href="'.wl($this->Vc_SourcePage).'">'.hsc($title).'</a>',-1);
+      			if(!$title) $title = $this->sourcePageId;
+	        	msg($this->lang['SourcePageExist'].' : <a href="'.wl($this->sourcePageId).'">'.hsc($title).'</a>',-1);
 	        	return;
 	        } 
 	        
-	        $this->SetRedirection($this->Vc_SourcePage,$this->Vc_TargetPage);
+	        $this->addRedirection($this->sourcePageId,$this->targetResource);
 	        msg($this->lang['Saved'],1);
 	        
         }
       	if($_POST['Delete']){
         	$Vl_SourcePage = $_POST['SourcePage'];
-        	$this->DeleteRedirection($Vl_SourcePage);
+        	$this->deleteRedirection($Vl_SourcePage);
             msg($this->lang['Deleted'],1);
         }
     	if($_POST['Validate']){
         	$Vl_SourcePage = $_POST['SourcePage'];
-        	$this->ValidateRedirection($Vl_SourcePage);
+        	$this->validateRedirection($Vl_SourcePage);
             msg($this->lang['Validated'],1);
         }
     }
@@ -156,7 +153,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin {
       	ptln( '	</thead>' );
       	
       	ptln( '	<tbody>' );		
-    	foreach ($this->Vc_RedirectData as $Vl_SourcePage => $Vl_Attributes) {
+    	foreach ($this->pageRedirections as $Vl_SourcePage => $Vl_Attributes) {
     			
     			$title = false;
     			if ($conf['useheading']) {
@@ -192,7 +189,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin {
 	        				}
 	        	ptln( '		<td>'.$Vl_Attributes['CreationDate'].'</td>');
 	        	ptln( '		<td>'.$Vl_Attributes['LastRedirectionDate'].'</td>');
-	        	if ( $this->IsValidUrl($Vl_Attributes['LastReferrer'])) {
+	        	if ( $this->isValidURL($Vl_Attributes['LastReferrer'])) {
 	        		print( '	<td>');
 	        				tpl_link($Vl_Attributes['LastReferrer'],$this->truncateString($Vl_Attributes['LastReferrer'],30),'title="'.$Vl_Attributes['LastReferrer'].'" class="urlextern" rel="nofollow"');
 	        		print( '	</td>');
@@ -219,8 +216,8 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin {
         	ptln( '</thead>');
         	
         	ptln( '<tbody>');
-			ptln( '		<tr><td><label for="add_sourcepage" >'.$this->lang['source_page'].'.: </label></td><td><input type="text" id="add_sourcepage" name="SourcePage" value="'.$this->Vc_SourcePage.'" class="edit" /></td></tr>');
-          	ptln( '		<tr><td><label for="add_targetpage" >'.$this->lang['target_page'].': </label></td><td><input type="text" id="add_targetpage" name="TargetPage" value="'.$this->Vc_TargetPage.'" class="edit" /></td></tr>');
+			ptln( '		<tr><td><label for="add_sourcepage" >'.$this->lang['source_page'].'.: </label></td><td><input type="text" id="add_sourcepage" name="SourcePage" value="'.$this->sourcePageId.'" class="edit" /></td></tr>');
+          	ptln( '		<tr><td><label for="add_targetpage" >'.$this->lang['target_page'].': </label></td><td><input type="text" id="add_targetpage" name="TargetPage" value="'.$this->targetResource.'" class="edit" /></td></tr>');
           	ptln( '		<tr><td><label for="add_valid" >'.$this->lang['redirection_valid'].': </label></td><td>'.$this->lang['yes'].'</td></tr>');
             ptln( '</tbody>');
         	
@@ -255,19 +252,20 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin {
     
     /**
 	* Delete Redirection
-	* @param    string      SourcePageName Wiki Page
+	* @param    string    $sourcePageId
 	*/
-    function DeleteRedirection($Vl_Sequence) {
-    	unset($this->Vc_RedirectData[$Vl_Sequence]);
-    	$this->Save();
+    function deleteRedirection($sourcePageId) {
+    	unset($this->pageRedirections[$sourcePageId]);
+    	$this->savePageRedirections();
     }
-    
+
     /**
-	* Is Redirection Present
-	* @param    string      SourcePageName Wiki Page
-	*/
-    function IsRedirectionPresent($Vl_Sequence) {
-    	if (isset($this->Vc_RedirectData[$Vl_Sequence])) {
+     * Is Redirection of a page Id Present
+     * @param  string  $sourcePageId
+     * @return int
+     */
+    function isRedirectionPresent($sourcePageId) {
+    	if (isset($this->pageRedirections[$sourcePageId])) {
 	        return 1;	
 	    } else {
 	    	return 0;
@@ -276,93 +274,97 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin {
     
     /**
 	* Add Redirection 
-	* @Vl_SourcePage    string      SourcePageName Wiki Page
-	* @Vl_TargetPage    string      TargetPageName Wiki Page
-	* @Vl_Validate		string      Y or N to validate the redirection
+	* @param string $sourcePageId
+	* @param string $targetPageId
 	*/
-    function SetRedirection($Vl_SourcePage, $Vl_TargetPage ) {
+    function addRedirection($sourcePageId, $targetPageId ) {
     	
-    	if (!isset($this->Vc_RedirectData[$Vl_SourcePage])) {
+    	if (!isset($this->pageRedirections[$sourcePageId])) {
 	        	
-    			$this->Vc_RedirectData[$Vl_SourcePage]['CreationDate']   = $this->Vc_CurrentDate;
+    			$this->pageRedirections[$sourcePageId]['CreationDate']   = $this->currentDate;
 	    		
 		    	// If the call come from the admin page and not from the process function
 		        if ( substr_count($_SERVER['HTTP_REFERER'],'admin.php' ) ) {
-		        	$this->Vc_RedirectData[$Vl_SourcePage]['IsValidate'] = 'Y';
-		        	$this->Vc_RedirectData[$Vl_SourcePage]['CountOfRedirection']   = 0;
-		        	$this->Vc_RedirectData[$Vl_SourcePage]['LastRedirectionDate']   = $this->lang['Never'];
-		        	$this->Vc_RedirectData[$Vl_SourcePage]['LastReferrer']   = 'Never';
+		        	$this->pageRedirections[$sourcePageId]['IsValidate'] = 'Y';
+		        	$this->pageRedirections[$sourcePageId]['CountOfRedirection']   = 0;
+		        	$this->pageRedirections[$sourcePageId]['LastRedirectionDate']   = $this->lang['Never'];
+		        	$this->pageRedirections[$sourcePageId]['LastReferrer']   = 'Never';
 		        } else {
-		        	$this->Vc_RedirectData[$Vl_SourcePage]['IsValidate'] = 'N';	
-		        	$this->Vc_RedirectData[$Vl_SourcePage]['CountOfRedirection']   = 1;
-		        	$this->Vc_RedirectData[$Vl_SourcePage]['LastRedirectionDate']   = $this->Vc_CurrentDate;
+		        	$this->pageRedirections[$sourcePageId]['IsValidate'] = 'N';
+		        	$this->pageRedirections[$sourcePageId]['CountOfRedirection']   = 1;
+		        	$this->pageRedirections[$sourcePageId]['LastRedirectionDate']   = $this->currentDate;
 		        	if ( $_SERVER['HTTP_REFERER'] <> '' ) {
-		        		$this->Vc_RedirectData[$Vl_SourcePage]['LastReferrer'] = $_SERVER['HTTP_REFERER'];
+		        		$this->pageRedirections[$sourcePageId]['LastReferrer'] = $_SERVER['HTTP_REFERER'];
 		        	} else {
-		        		$this->Vc_RedirectData[$Vl_SourcePage]['LastReferrer'] = $this->lang['Direct Access']; 	
+		        		$this->pageRedirections[$sourcePageId]['LastReferrer'] = $this->lang['Direct Access'];
 		        	}
 		        }
 		        
         }
         
-        if ( !$this->IsValidURL($Vl_TargetPage) ) {
-        	$this->Vc_RedirectData[$Vl_SourcePage]['TargetPageType'] = 'Internal Page';	
+        if ( !$this->isValidURL($targetPageId) ) {
+        	$this->pageRedirections[$sourcePageId]['TargetPageType'] = 'Internal Page';
         } else {
-        	$this->Vc_RedirectData[$Vl_SourcePage]['TargetPageType'] = 'Url';
+        	$this->pageRedirections[$sourcePageId]['TargetPageType'] = 'Url';
         }
-        $this->Vc_RedirectData[$Vl_SourcePage]['TargetPage']     = $Vl_TargetPage;
-    	$this->Save();
+        $this->pageRedirections[$sourcePageId]['TargetPage']     = $targetPageId;
+    	$this->savePageRedirections();
     }
     
     /**
-	* Validate Redirection
-	* @param    string      SourcePageName Wiki Page
+	* Validate a Redirection
+	* @param    string    $sourcePageId
 	*/
-    function ValidateRedirection($Vl_Sequence) {
-    	$this->Vc_RedirectData[$Vl_Sequence]['IsValidate'] = 'Y';
-    	$this->Save();
+    function validateRedirection($sourcePageId) {
+    	$this->pageRedirections[$sourcePageId]['IsValidate'] = 'Y';
+    	$this->savePageRedirections();
     }
-    
-    /**
-	* Get IsValidate Redirection
-	* @param    string      SourcePageName Wiki Page
-	*/
-    function GetIsValidate($Vl_Sequence) {
-    	return $this->Vc_RedirectData[$Vl_Sequence]['IsValidate'];
+
+	/**
+	 * Get IsValidate Redirection
+	 * @param    string  $sourcePageId
+	 * @return string
+	 */
+    function getIsValidate($sourcePageId) {
+		if ($this->pageRedirections[$sourcePageId]['IsValidate'] == null) {
+			return 'N';
+		} else {
+			return $this->pageRedirections[$sourcePageId]['IsValidate'];
+		}
     }	
     
     /**
 	* Get TargetPageType 
-	* @param    string      SourcePageName Wiki Page
+	* @param    string  $sourcePageId
 	*/
-    function GetTargetPageType($Vl_Sequence) {
-    	return $this->Vc_RedirectData[$Vl_Sequence]['TargetPageType'];
+    function getTargetPageType($sourcePageId) {
+    	return $this->pageRedirections[$sourcePageId]['TargetPageType'];
     }
     
     /**
-	* Get TargetPage 
-	* @param    string      SourcePageName Wiki Page
+	* Get TargetResource (It can be an external URL as an intern page id
+	* @param    string   $sourcePageId
 	*/
-    function GetTargetPage($Vl_Sequence) {
-    	return $this->Vc_RedirectData[$Vl_Sequence]['TargetPage'];
+    function getTargetResource($sourcePageId) {
+    	return $this->pageRedirections[$sourcePageId]['TargetPage'];
     }
     
     /**
-	* Set Redirection Action Data as Referrer, Count Of Redirection, Redirection Date
-	* @param    string      SourcePageName Wiki Page
+	* Update Redirection Action Data as Referrer, Count Of Redirection, Redirection Date
+	* @param    string   $sourcePageId
 	*/
-    function SetRedirectionActionData($Vl_Sequence) {
-    	$this->Vc_RedirectData[$Vl_Sequence]['LastRedirectionDate']   = $this->Vc_CurrentDate;
-    	$this->Vc_RedirectData[$Vl_Sequence]['LastReferrer']  = $_SERVER['HTTP_REFERER'];
-    	$this->Vc_RedirectData[$Vl_Sequence]['CountOfRedirection']  = $this->Vc_RedirectData[$Vl_Sequence]['CountOfRedirection'] + 1;
-    	$this->Save();
+    function updateRedirectionMetaData($sourcePageId) {
+    	$this->pageRedirections[$sourcePageId]['LastRedirectionDate']   = $this->currentDate;
+    	$this->pageRedirections[$sourcePageId]['LastReferrer']  = $_SERVER['HTTP_REFERER'];
+    	$this->pageRedirections[$sourcePageId]['CountOfRedirection']  += 1;
+    	$this->savePageRedirections();
     }
     
     /**
      * Serialize and save the redirection data file
      */
-    function Save() {
-    	io_saveFile($this->Vc_DataFileLocation, serialize($this->Vc_RedirectData));
+    function savePageRedirections() {
+    	io_saveFile($this->pageRedirectionsFilePath, serialize($this->pageRedirections));
     }
     
     /**
@@ -371,11 +373,11 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin {
 	* @param    string      $url	   string containing url user input
 	* @return   boolean     Returns TRUE/FALSE
 	*/
-	function IsValidURL($url)
+	function isValidURL($url)
 	{
+		// of preg_match('/^https?:\/\//',$url) ? from redirect plugin
 		return preg_match('|^http(s)?://[a-z0-9-]+(.[a-z0-9-]+)*(:[0-9]+)?(/.*)?$|i', $url); 
 	}
        
 
 }
-//Setup VIM: ex: et ts=4 enc=utf-8 :
