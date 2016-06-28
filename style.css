@@ -47,7 +47,7 @@
 
 
 /* alert are messages that appears when the 404 manager does something */
-#404manager .alert-warning {
+.redirect-manager.alert-warning {
     box-sizing: border-box;
     background-image: linear-gradient(to bottom, #fcf8e3 0px, #f8efc0 100%);
     background-repeat: repeat-x;

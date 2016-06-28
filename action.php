@@ -121,7 +121,6 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         //   * do nothing
 
 
-
         // If a redirection is already known, this means that this is not the first
         // case that we get this redirection
         // The page must exist of be an external URL
@@ -208,7 +207,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
                         if ($scorePageName > $Vl_ScoreNamespace) {
                             $this->redirectToDokuwikiPage($bestPageId, self::REDIRECT_SOURCE_BEST_PAGE_NAME);
                         } else {
-                            $this->redirectToDokuwikiPage($bestNamespaceId,  self::REDIRECT_SOURCE_BEST_PAGE_NAME);
+                            $this->redirectToDokuwikiPage($bestNamespaceId, self::REDIRECT_SOURCE_BEST_PAGE_NAME);
                         }
                         return;
                     }
@@ -219,7 +218,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
                     list($bestNamespaceId, $score) = explode(" ", $this->getBestNamespace($ID));
 
                     if ($score > 0) {
-                        $this->redirectToDokuwikiPage($bestNamespaceId,self::REDIRECT_SOURCE_BEST_NAMESPACE);
+                        $this->redirectToDokuwikiPage($bestNamespaceId, self::REDIRECT_SOURCE_BEST_NAMESPACE);
                         return true;
                     }
                     break;
@@ -227,7 +226,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
                 case 'GoToSearchEngine':
 
                     //do fulltext search
-                    $this->message = sprintf($this->lang['message_redirected_to_searchengine'],hsc($ID));
+                    $this->message = sprintf($this->lang['message_redirected_to_searchengine'], hsc($ID));
                     $this->messageType = 'Warning';
 
                     global $QUERY;
@@ -424,63 +423,64 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
 
         global $ID;
 
-        $this->redirectManager->updateRedirectionMetaData($ID);
+        //If the user have right to see the target page
+        if ($_SERVER['REMOTE_USER']) {
+            $perm = auth_quickaclcheck($targetPage);
+        } else {
+            $perm = auth_aclcheck($targetPage, '', null);
+        }
+        if ($perm <= AUTH_NONE) {
+            return;
+        }
 
         switch ($redirectSource) {
 
             case self::REDIRECT_SOURCE_REDIRECT:
                 // This is an internal ID
                 if ($this->redirectManager->getIsValidate($ID) == 'N') {
-                    $this->message = sprintf($this->lang['message_redirected_by_redirect'],hsc($ID));
+                    $this->message = sprintf($this->lang['message_redirected_by_redirect'], hsc($ID));
                     $this->messageType = 'Warning';
                 };
                 break;
 
             case self::REDIRECT_SOURCE_START_PAGE:
-                $this->message = sprintf($this->lang['message_redirected_to_startpage'],hsc($ID));
+                $this->message = sprintf($this->lang['message_redirected_to_startpage'], hsc($ID));
                 $this->messageType = 'Warning';
                 break;
 
             case  self::REDIRECT_SOURCE_BEST_PAGE_NAME:
-                $this->message = sprintf($this->lang['message_redirected_to_bestpagename'],hsc($ID));
+                $this->message = sprintf($this->lang['message_redirected_to_bestpagename'], hsc($ID));
                 $this->messageType = 'Warning';
                 break;
 
             case self::REDIRECT_SOURCE_BEST_NAMESPACE:
-                $this->message = sprintf($this->lang['message_redirected_to_bestnamespace'],hsc($ID));
+                $this->message = sprintf($this->lang['message_redirected_to_bestnamespace'], hsc($ID));
                 $this->messageType = 'Warning';
                 break;
 
         }
 
-
-        //If the user have right to see the page
-        if ($_SERVER['REMOTE_USER']) {
-            $perm = auth_quickaclcheck($ID);
+        // Add or update the redirections
+        if ($this->redirectManager->isRedirectionPresent($ID)) {
+            $this->redirectManager->updateRedirectionMetaData($ID);
         } else {
-            $perm = auth_aclcheck($ID, '', null);
+            $this->redirectManager->addRedirection($ID, $targetPage);
         }
 
-        $this->redirectManager->addRedirection($ID, $targetPage);
-        if ($perm > AUTH_NONE) {
+        // Keep the message in session for display
+        //reopen session, store data and close session again
+        @session_start();
+        $msg['content'] = $this->message;
+        $msg['type'] = $this->messageType;
+        $_SESSION[DOKU_COOKIE]['404manager_msg'] = $msg;
+        // always close the session
+        session_write_close();
 
-            // Keep the message in session for display
-            //reopen session, store data and close session again
-            @session_start();
-            $msg['content']=$this->message;
-            $msg['type']=$this->messageType;
-            $_SESSION[DOKU_COOKIE]['404manager_msg'] = $msg;
-            // always close the session
-            session_write_close();
-
-            $link = explode('#', $targetPage, 2);
-            // TODO: Status code
-            // header('HTTP/1.1 301 Moved Permanently');
-            send_redirect(wl($link[0] ,'',true) . '#' . rawurlencode($link[1]));
-            exit();
-
-        }
-
+        $link = explode('#', $targetPage, 2);
+        // TODO: Status code
+        // header('HTTP/1.1 301 Moved Permanently');
+        send_redirect(wl($link[0], '', true) . '#' . rawurlencode($link[1]));
+        exit();
 
 
     }
