@@ -1,6 +1,6 @@
 <?php
 /**
- * General tests for the manag plugin
+ * General tests for the 404manager plugin
  *
  * @group plugin_404manager
  * @group plugins
