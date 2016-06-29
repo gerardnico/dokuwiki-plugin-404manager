@@ -6,7 +6,7 @@
  * @group plugins
  */
 require_once(__DIR__.'/constant_parameters.php');
-class general_plugin_manag_test extends DokuWikiTest {
+class dokuwiki_plugin_404manager_test extends DokuWikiTest {
 
     /**
      * Simple test to make sure the plugin.info.txt is in correct format

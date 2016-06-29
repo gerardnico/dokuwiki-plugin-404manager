@@ -1,4 +1,4 @@
-# dokuwiki-plugin-404manager
+# dokuwiki-plugin-404manager [![Build Status](https://travis-ci.org/gerardnico/dokuwiki-plugin-404manager.svg?branch=master)](https://travis-ci.org/gerardnico/dokuwiki-plugin-404manager)
 
 ## About
 
@@ -26,7 +26,7 @@ in order to move page around. The most important problem is that thus external l
 
 
 ### For readers
-  
+
   * Redirection to a target page for a source page with the admin page
   * Redirection by to the start page of the same namespace
   * Redirection by best namespace
