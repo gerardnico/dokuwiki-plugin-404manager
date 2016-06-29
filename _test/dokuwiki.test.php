@@ -1,10 +1,11 @@
 <?php
 /**
- * General tests for the 404manager plugin
+ * DokuWiki function tests for the 404manager plugin
  *
  * @group plugin_404manager
  * @group plugins
  */
+require_once(__DIR__.'/constant_parameters.php');
 class general_plugin_manag_test extends DokuWikiTest {
 
     /**
@@ -30,4 +31,17 @@ class general_plugin_manag_test extends DokuWikiTest {
         $this->assertRegExp('/^\d\d\d\d-\d\d-\d\d$/', $info['date']);
         $this->assertTrue(false !== strtotime($info['date']));
     }
+
+    public function test_pageExists()
+    {
+
+        $pageId = constant_parameters::MANAGER404_NAMESPACE . constant_parameters::PATH_SEPARATOR. 'page_exist';
+        saveWikiText($pageId, 'A page', 'Test initialization');
+        idx_addPage($pageId);
+
+        $this->assertTrue(page_exists($pageId));
+
+    }
+
+
 }
