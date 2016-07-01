@@ -10,8 +10,8 @@ class dokuwiki_plugin_404manager_test extends DokuWikiTest {
     public static function setUpBeforeClass()
     {
         parent::setUpBeforeClass();
-        saveWikiText(constant_parameters::PAGE_EXIST_ID, 'A page', 'Test initialization');
-        idx_addPage(PAGE_EXIST_ID);
+        saveWikiText(constant_parameters::$PAGE_EXIST_ID, 'A page', 'Test initialization');
+        idx_addPage(constant_parameters::$PAGE_EXIST_ID);
     }
 
 
@@ -48,21 +48,21 @@ class dokuwiki_plugin_404manager_test extends DokuWikiTest {
 
 
         // Not in a request
-        $this->assertTrue(page_exists(constant_parameters::PAGE_EXIST_ID));
+        $this->assertTrue(page_exists(constant_parameters::$PAGE_EXIST_ID));
 
         // In a request
         $request = new TestRequest();
-        $request->get(array('id' => constant_parameters::PAGE_EXIST_ID), '/doku.php');
+        $request->get(array('id' => constant_parameters::$PAGE_EXIST_ID), '/doku.php');
         $request->execute();
         global $INFO;
         $this->assertTrue($INFO['exists']);
 
         // Not in a request
-        $this->assertFalse(page_exists(constant_parameters::PAGE_DOES_NOT_EXIST_ID));
+        $this->assertFalse(page_exists(constant_parameters::$PAGE_DOES_NOT_EXIST_ID));
 
         // In a request
         $request = new TestRequest();
-        $request->get(array('id' => constant_parameters::PAGE_DOES_NOT_EXIST_ID), '/doku.php');
+        $request->get(array('id' => constant_parameters::$PAGE_DOES_NOT_EXIST_ID), '/doku.php');
         $request->execute();
         global $INFO;
         $this->assertFalse($INFO['exists']);
