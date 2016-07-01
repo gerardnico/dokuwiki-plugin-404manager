@@ -5,23 +5,35 @@
  * @group plugin_404manager
  * @group plugins
  */
-require_once(__DIR__.'/constant_parameters.php');
-class manager_plugin_404manager_test extends DokuWikiTest {
+require_once(__DIR__ . '/constant_parameters.php');
+
+class manager_plugin_404manager_test extends DokuWikiTest
+{
+
+    // Needed otherwise the plugin is not enabled
+    protected $pluginsEnabled = array('404manager');
 
 
-    public function test_redirect()
+    public function test_internalRedirectToSearch()
     {
 
-        $pageId = constant_parameters::MANAGER404_NAMESPACE. constant_parameters::PATH_SEPARATOR.'pageDoesntexist';
-        $this->assertFalse(page_exists($pageId));
+        global $conf;
+        $conf ['plugin'][constant_parameters::$PLUGIN_BASE]['ActionReaderFirst'] = 'GoToSearchEngine';
+
+        global $AUTH_ACL;
+        $aclReadOnlyFile = constant_parameters::DIR_RESOURCES.'/acl.auth.read_only.php';
+        $AUTH_ACL = file($aclReadOnlyFile);
 
         $request = new TestRequest();
-        $request->get(array('id' => $pageId), '/doku.php');
+        $request->get(array('id' => constant_parameters::PAGE_DOES_NOT_EXIST_NO_REDIRECTION_ID), '/doku.php');
         $request->execute();
 
-        global $INFO;
-        $this->assertFalse($INFO['exists']);
+        global $QUERY;
+        global $ACT;
+        $this->assertEquals(str_replace(':', ' ', constant_parameters::PAGE_DOES_NOT_EXIST_NO_REDIRECTION_ID),$QUERY);
+        $this->assertEquals('search', $ACT);
 
 
     }
+
 }

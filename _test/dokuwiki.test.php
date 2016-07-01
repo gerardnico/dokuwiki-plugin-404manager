@@ -7,6 +7,13 @@
  */
 require_once(__DIR__.'/constant_parameters.php');
 class dokuwiki_plugin_404manager_test extends DokuWikiTest {
+    public static function setUpBeforeClass()
+    {
+        parent::setUpBeforeClass();
+        saveWikiText(constant_parameters::PAGE_EXIST_ID, 'A page', 'Test initialization');
+        idx_addPage(PAGE_EXIST_ID);
+    }
+
 
     /**
      * Simple test to make sure the plugin.info.txt is in correct format
@@ -32,15 +39,33 @@ class dokuwiki_plugin_404manager_test extends DokuWikiTest {
         $this->assertTrue(false !== strtotime($info['date']));
     }
 
+    /** Page exist can be tested on two ways within DokuWiki
+     *   * page_exist
+     *   * and the $INFO global variable
+     */
     public function test_pageExists()
     {
 
-        $pageId = constant_parameters::MANAGER404_NAMESPACE . constant_parameters::PATH_SEPARATOR. 'page_exist';
-        saveWikiText($pageId, 'A page', 'Test initialization');
-        idx_addPage($pageId);
 
-        $this->assertTrue(page_exists($pageId));
+        // Not in a request
+        $this->assertTrue(page_exists(constant_parameters::PAGE_EXIST_ID));
 
+        // In a request
+        $request = new TestRequest();
+        $request->get(array('id' => constant_parameters::PAGE_EXIST_ID), '/doku.php');
+        $request->execute();
+        global $INFO;
+        $this->assertTrue($INFO['exists']);
+
+        // Not in a request
+        $this->assertFalse(page_exists(constant_parameters::PAGE_DOES_NOT_EXIST_ID));
+
+        // In a request
+        $request = new TestRequest();
+        $request->get(array('id' => constant_parameters::PAGE_DOES_NOT_EXIST_ID), '/doku.php');
+        $request->execute();
+        global $INFO;
+        $this->assertFalse($INFO['exists']);
     }
 
 

@@ -95,9 +95,8 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         // If this is an external redirect
         if ($this->redirectManager->isValidURL($targetPage) && $targetPage) {
 
-            $this->redirectManager->updateRedirectionMetaData($ID);
-            send_redirect($targetPage);
-            exit;
+            $this->redirectToExternalPage($targetPage);
+            return true;
 
         }
 
@@ -120,18 +119,15 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         //   * go to the search page
         //   * do nothing
 
-
-        // If a redirection is already known, this means that this is not the first
-        // case that we get this redirection
-        // The page must exist of be an external URL
-        if ($targetPage && (page_exists($targetPage) || $this->redirectManager->isValidURL($targetPage))) {
+        // If the page exist
+        if (page_exists($targetPage)) {
 
             $this->redirectToDokuwikiPage($targetPage, self::REDIRECT_SOURCE_REDIRECT);
             return true;
 
         }
 
-        // We are still a reader, the user not allowed to edit the page (public of other)
+        // We are still a reader, the redirection does not exist the user not allowed to edit the page (public of other)
         if ($this->getConf('ActionReaderFirst') == 'Nothing') {
             return true;
         }
@@ -480,8 +476,33 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         // TODO: Status code
         // header('HTTP/1.1 301 Moved Permanently');
         send_redirect(wl($link[0], '', true) . '#' . rawurlencode($link[1]));
+
+        if(defined('DOKU_UNITTEST')) return; // no exits during unit tests
         exit();
 
+    }
+
+    /**
+     * Redirect to an internal page, no external resources
+     * @param $url the target page id or an URL
+     * @param string|the $redirectSource the source of the redirect
+     */
+    private function redirectToExternalPage($url)
+    {
+
+        global $ID;
+
+        // No message can be shown because this is an external URL
+
+        // Update the redirections
+        $this->redirectManager->updateRedirectionMetaData($ID);
+
+        // TODO: Status code
+        // header('HTTP/1.1 301 Moved Permanently');
+        send_redirect($url);
+
+        if(defined('DOKU_UNITTEST')) return; // no exits during unit tests
+        exit();
 
     }
 
