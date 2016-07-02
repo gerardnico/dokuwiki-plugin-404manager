@@ -6,6 +6,7 @@
  * @group plugins
  */
 require_once(__DIR__ . '/constant_parameters.php');
+require_once(__DIR__ . '/../action.php');
 
 class manager_plugin_404manager_test extends DokuWikiTest
 {
@@ -20,7 +21,7 @@ class manager_plugin_404manager_test extends DokuWikiTest
     {
 
         global $conf;
-        $conf ['plugin'][constant_parameters::$PLUGIN_BASE]['ActionReaderFirst'] = 'GoToSearchEngine';
+        $conf ['plugin'][constant_parameters::$PLUGIN_BASE]['ActionReaderFirst'] = action_plugin_404manager::GO_TO_SEARCH_ENGINE;
 
         global $AUTH_ACL;
         $aclReadOnlyFile = constant_parameters::$DIR_RESOURCES . '/acl.auth.read_only.php';
@@ -68,7 +69,7 @@ class manager_plugin_404manager_test extends DokuWikiTest
     public function test_internalRedirectToNonExistingPage()
     {
 
-        $conf ['plugin'][constant_parameters::$PLUGIN_BASE]['ActionReaderFirst'] = 'GoToSearchEngine';
+        $conf ['plugin'][constant_parameters::$PLUGIN_BASE]['ActionReaderFirst'] = action_plugin_404manager::GO_TO_SEARCH_ENGINE;
 
         $redirectManager = new admin_plugin_404manager();
         if ($redirectManager->isRedirectionPresent(constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE)) {
@@ -107,6 +108,8 @@ class manager_plugin_404manager_test extends DokuWikiTest
         // Create the target Page
         saveWikiText(constant_parameters::$EXPLICIT_REDIRECT_PAGE_TARGET, 'EXPLICIT_REDIRECT_PAGE_TARGET', 'Test initialization');
 
+        $conf ['plugin'][constant_parameters::$PLUGIN_BASE]['ActionReaderFirst'] = action_plugin_404manager::GO_TO_SEARCH_ENGINE;
+
         // Read only otherwise, you go in edit mode
         global $AUTH_ACL;
         $aclReadOnlyFile = constant_parameters::$DIR_RESOURCES . '/acl.auth.read_only.php';
@@ -122,6 +125,93 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $locationHeader = $response->getHeader("Location");
         // assertContains is for an array
         $this->assertRegexp('/'.constant_parameters::$EXPLICIT_REDIRECT_PAGE_TARGET.'/',$locationHeader,"The page was redirected");
+
+
+    }
+
+    /**
+     * Test a redirect to an internal page that was chosen through BestNamePage
+     * with a relocation in the same branch
+     */
+    public function test_internalRedirectToBestNamePageSameBranch()
+    {
+
+
+        $redirectManager = new admin_plugin_404manager();
+        if ($redirectManager->isRedirectionPresent(constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE)) {
+            $redirectManager->deleteRedirection(constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE);
+        }
+
+
+        // Create the target Page
+        saveWikiText(constant_parameters::$REDIRECT_BEST_PAGE_NAME_TARGET_SAME_BRANCH, 'REDIRECT Best Page Name Same Branch', 'Test initialization');
+        // Add the page to the index, otherwise, it will not be find by the ft_lookup
+        idx_addPage(constant_parameters::$REDIRECT_BEST_PAGE_NAME_TARGET_SAME_BRANCH);
+
+        // Read only otherwise, you go in edit mode
+        global $AUTH_ACL;
+        $aclReadOnlyFile = constant_parameters::$DIR_RESOURCES . '/acl.auth.read_only.php';
+        $AUTH_ACL = file($aclReadOnlyFile);
+
+        $conf ['plugin'][constant_parameters::$PLUGIN_BASE]['ActionReaderFirst'] = action_plugin_404manager::GO_TO_BEST_PAGE_NAME;
+        $conf['plugin'][constant_parameters::$PLUGIN_BASE]['WeightFactorForSamePageName'] = 4;
+        $conf['plugin'][constant_parameters::$PLUGIN_BASE]['WeightFactorForStartPage'] = 3;
+        $conf['plugin'][constant_parameters::$PLUGIN_BASE]['WeightFactorForSameNamespace'] = 5;
+
+        $request = new TestRequest();
+        $request->get(array('id' => constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE), '/doku.php');
+        $response = $request->execute();
+
+
+        $locationHeader = $response->getHeader("Location");
+        $this->assertNotEquals(0,count($locationHeader),"Their must be an redirection header.");
+        // assertContains is for an array
+        $this->assertRegexp('/'.constant_parameters::$REDIRECT_BEST_PAGE_NAME_TARGET_SAME_BRANCH.'/',$locationHeader,"The page was redirected");
+
+
+    }
+
+    /**
+     * Test a redirect to an internal page that was chosen through BestNamePage
+     * with a relocation to the same branch (the minimum target Id length)
+     * even if there is another page with the same name in an other branch
+     */
+    public function test_internalRedirectToBestNamePageOtherBranch()
+    {
+
+
+        $redirectManager = new admin_plugin_404manager();
+        if ($redirectManager->isRedirectionPresent(constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE)) {
+            $redirectManager->deleteRedirection(constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE);
+        }
+
+
+        // Create the target Pages and add the pages to the index, otherwise, they will not be find by the ft_lookup
+        saveWikiText(constant_parameters::$REDIRECT_BEST_PAGE_NAME_TARGET_SAME_BRANCH, 'REDIRECT Best Page Name Same Branch', 'Test initialization');
+        idx_addPage(constant_parameters::$REDIRECT_BEST_PAGE_NAME_TARGET_SAME_BRANCH);
+        saveWikiText(constant_parameters::$REDIRECT_BEST_PAGE_NAME_TARGET_OTHER_BRANCH, 'REDIRECT Best Page Name Other Branch', 'Test initialization');
+        idx_addPage(constant_parameters::$REDIRECT_BEST_PAGE_NAME_TARGET_OTHER_BRANCH);
+
+
+        // Read only otherwise, you go in edit mode
+        global $AUTH_ACL;
+        $aclReadOnlyFile = constant_parameters::$DIR_RESOURCES . '/acl.auth.read_only.php';
+        $AUTH_ACL = file($aclReadOnlyFile);
+
+        $conf ['plugin'][constant_parameters::$PLUGIN_BASE]['ActionReaderFirst'] = action_plugin_404manager::GO_TO_BEST_PAGE_NAME;
+        $conf['plugin'][constant_parameters::$PLUGIN_BASE]['WeightFactorForSamePageName'] = 4;
+        $conf['plugin'][constant_parameters::$PLUGIN_BASE]['WeightFactorForStartPage'] = 3;
+        $conf['plugin'][constant_parameters::$PLUGIN_BASE]['WeightFactorForSameNamespace'] = 5;
+
+        $request = new TestRequest();
+        $request->get(array('id' => constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE), '/doku.php');
+        $response = $request->execute();
+
+
+        $locationHeader = $response->getHeader("Location");
+        $this->assertNotEquals(0,count($locationHeader),"Their must be an redirection header.");
+        // assertContains is for an array
+        $this->assertRegexp('/'.constant_parameters::$REDIRECT_BEST_PAGE_NAME_TARGET_SAME_BRANCH.'/',$locationHeader,"The page was redirected");
 
 
     }

@@ -1,7 +1,8 @@
 <?php
-$conf['ActionReaderFirst']  = 'GoToBestPageName';
-$conf['ActionReaderSecond'] = 'GoToSearchEngine';
-$conf['ActionReaderThird']  = 'Nothing';
+require_once(dirname(__FILE__) . '/../action.php');
+$conf['ActionReaderFirst']  = action_plugin_404manager::GO_TO_BEST_PAGE_NAME;
+$conf['ActionReaderSecond'] = action_plugin_404manager::GO_TO_SEARCH_ENGINE;
+$conf['ActionReaderThird']  = action_plugin_404manager::NOTHING;
 $conf['GoToEditMode'] = 1;
 $conf['ShowPageNameIsNotUnique'] = 1;
 $conf['ShowMessageClassic'] = 1;

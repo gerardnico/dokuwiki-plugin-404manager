@@ -19,6 +19,11 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
     const REDIRECT_SOURCE_START_PAGE = 'startPage';
     const REDIRECT_SOURCE_BEST_PAGE_NAME = 'bestPageName';
     const REDIRECT_SOURCE_BEST_NAMESPACE = 'bestNamespace';
+    const GO_TO_SEARCH_ENGINE = 'GoToSearchEngine';
+    const GO_TO_BEST_NAMESPACE = 'GoToBestNamespace';
+    const GO_TO_BEST_PAGE_NAME = 'GoToBestPageName';
+    const GO_TO_NS_START_PAGE = 'GoToNsStartPage';
+    const NOTHING = 'Nothing';
 
     /**
      * The object that holds all management function
@@ -128,7 +133,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         }
 
         // We are still a reader, the redirection does not exist the user not allowed to edit the page (public of other)
-        if ($this->getConf('ActionReaderFirst') == 'Nothing') {
+        if ($this->getConf('ActionReaderFirst') == self::NOTHING) {
             return true;
         }
 
@@ -143,11 +148,11 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
 
             switch ($readerAlgorithms[$i]) {
 
-                case 'Nothing':
+                case self::NOTHING:
                     return;
                     break;
 
-                case 'GoToNsStartPage':
+                case self::GO_TO_NS_START_PAGE:
 
                     // Start page with the conf['start'] parameter
                     $startPage = getNS($ID) . ':' . $conf['start'];
@@ -163,10 +168,10 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
                     }
                     break;
 
-                case 'GoToBestPageName':
+                case self::GO_TO_BEST_PAGE_NAME:
 
                     $scorePageName = 0;
-                    $bestPageId = '';
+                    $bestPageId = null;
 
                     //Search same page name
                     require_once(DOKU_INC . 'inc/fulltext.php');
@@ -178,19 +183,35 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
 
                         // Search same namespace in the page found than in the Id page asked.
                         $bestNbWordFound = 0;
-                        $bestPageId = '';
-                        $idToExplode = str_replace('_', ':', $ID);
-                        $wordsInId = explode(':', $idToExplode);
-                        foreach ($pagesWithSameName as $Vl_PageId => $title) {
-                            $Vl_NbWordFound = 0;
-                            foreach ($wordsInId as $Vl_Word) {
-                                $Vl_NbWordFound = $Vl_NbWordFound + substr_count($Vl_PageId, $Vl_Word);
+                        $bestPageId = null;
+
+                        $pageSourceIdToExplode = str_replace('_', ':', $ID);
+                        $wordsInPageSourceId = explode(':', $pageSourceIdToExplode);
+                        foreach ($pagesWithSameName as $targetPageId => $title) {
+
+                            // Nb of word found in the target page id
+                            // that are in the source page id
+                            $nbWordFound = 0;
+                            foreach ($wordsInPageSourceId as $word) {
+                                $nbWordFound = $nbWordFound + substr_count($targetPageId, $word);
                             }
 
-                            if ($Vl_NbWordFound >= $bestNbWordFound) {
-                                $bestNbWordFound = $Vl_NbWordFound;
-                                $bestPageId = $Vl_PageId;
+                            if ($bestPageId == null) {
+
+                                $bestNbWordFound = $nbWordFound;
+                                $bestPageId = $targetPageId;
+
+                            } else {
+
+                                if ($nbWordFound >= $bestNbWordFound && strlen($bestPageId) > strlen($targetPageId)) {
+
+                                    $bestNbWordFound = $nbWordFound;
+                                    $bestPageId = $targetPageId;
+
+                                }
+
                             }
+
                         }
                         $scorePageName = $this->getConf('WeightFactorForSamePageName') + $bestNbWordFound * $this->getConf('WeightFactorForSameNamespace');
                     }
@@ -209,7 +230,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
                     }
                     break;
 
-                case 'GoToBestNamespace':
+                case self::GO_TO_BEST_NAMESPACE:
 
                     list($bestNamespaceId, $score) = explode(" ", $this->getBestNamespace($ID));
 
@@ -219,7 +240,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
                     }
                     break;
 
-                case 'GoToSearchEngine':
+                case self::GO_TO_SEARCH_ENGINE:
 
                     //do fulltext search
                     $this->message = sprintf($this->lang['message_redirected_to_searchengine'], hsc($ID));
@@ -477,7 +498,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         // header('HTTP/1.1 301 Moved Permanently');
         send_redirect(wl($link[0], '', true) . '#' . rawurlencode($link[1]));
 
-        if(defined('DOKU_UNITTEST')) return; // no exits during unit tests
+        if (defined('DOKU_UNITTEST')) return; // no exits during unit tests
         exit();
 
     }
@@ -501,7 +522,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         // header('HTTP/1.1 301 Moved Permanently');
         send_redirect($url);
 
-        if(defined('DOKU_UNITTEST')) return; // no exits during unit tests
+        if (defined('DOKU_UNITTEST')) return; // no exits during unit tests
         exit();
 
     }

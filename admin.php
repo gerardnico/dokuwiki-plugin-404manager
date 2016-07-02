@@ -264,7 +264,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
      */
     function deleteRedirection($sourcePageId)
     {
-        unset($this->pageRedirections[$sourcePageId]);
+        unset($this->pageRedirections[strtolower($sourcePageId)]);
         $this->savePageRedirections();
     }
 
@@ -275,7 +275,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
      */
     function isRedirectionPresent($sourcePageId)
     {
-        if (isset($this->pageRedirections[$sourcePageId])) {
+        if (isset($this->pageRedirections[strtolower($sourcePageId)])) {
             return 1;
         } else {
             return 0;
@@ -291,11 +291,14 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
     function addRedirection($sourcePageId, $targetPageId)
     {
 
+        // Lower page name is the dokuwiki Id
+        $sourcePageId = strtolower($sourcePageId);
+
         if (isset($this->pageRedirections[$sourcePageId])) {
             throw new Exception('Redirection for page (' + $sourcePageId + 'already exist');
         }
 
-        $this->pageRedirections[$sourcePageId]['TargetPage'] = $targetPageId;
+        $this->pageRedirections[$sourcePageId]['TargetPage'] = $sourcePageId;
         $this->pageRedirections[$sourcePageId]['CreationDate'] = $this->currentDate;
         // If the call come from the admin page and not from the process function
         if (substr_count($_SERVER['HTTP_REFERER'], 'admin.php')) {
@@ -366,7 +369,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
      */
     function getTargetResource($sourcePageId)
     {
-        return $this->pageRedirections[$sourcePageId]['TargetPage'];
+        return $this->pageRedirections[strtolower($sourcePageId)]['TargetPage'];
     }
 
     /**

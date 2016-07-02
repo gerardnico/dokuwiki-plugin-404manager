@@ -27,6 +27,15 @@ class constant_parameters
     static $EXPLICIT_REDIRECT_PAGE_SOURCE;
     static $EXPLICIT_REDIRECT_PAGE_TARGET;
 
+    static $REDIRECT_BEST_PAGE_NAME_SOURCE;
+    static $REDIRECT_BEST_PAGE_NAME_TARGET_SAME_BRANCH;
+    static $REDIRECT_BEST_PAGE_NAME_TARGET_OTHER_BRANCH;
+
+    const NS_PAGE = 'nsAttachedToPage';
+
+    const NS_BRANCH_1 = 'nsBranch1';
+    const NS_BRANCH_2 = 'nsBranch2';
+
     static function init()
     {
         $pluginInfoFile = __DIR__ . '/../plugin.info.txt';
@@ -45,6 +54,11 @@ class constant_parameters
 
         self::$EXPLICIT_REDIRECT_PAGE_SOURCE = self::$MANAGER404_NAMESPACE . self::PATH_SEPARATOR . 'explicit_redirect_to_internal_page_source';
         self::$EXPLICIT_REDIRECT_PAGE_TARGET = self::$MANAGER404_NAMESPACE . self::PATH_SEPARATOR . 'explicit_redirect_to_internal_page_target';
+
+        self::$REDIRECT_BEST_PAGE_NAME_SOURCE = self::$MANAGER404_NAMESPACE . self::PATH_SEPARATOR . self::NS_BRANCH_1 . self::PATH_SEPARATOR . self::NS_PAGE . self::PATH_SEPARATOR .'redirect_best_page_name';
+        // Without Level1
+        self::$REDIRECT_BEST_PAGE_NAME_TARGET_SAME_BRANCH = self::$MANAGER404_NAMESPACE . self::PATH_SEPARATOR . self::NS_PAGE . self::PATH_SEPARATOR .'redirect_best_page_name';
+        self::$REDIRECT_BEST_PAGE_NAME_TARGET_OTHER_BRANCH = self::$MANAGER404_NAMESPACE . self::PATH_SEPARATOR . self::NS_BRANCH_2 . self::PATH_SEPARATOR . self::NS_PAGE . self::PATH_SEPARATOR .'redirect_best_page_name';
 
 
     }
