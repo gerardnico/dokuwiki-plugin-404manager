@@ -298,7 +298,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
             throw new Exception('Redirection for page (' + $sourcePageId + 'already exist');
         }
 
-        $this->pageRedirections[$sourcePageId]['TargetPage'] = $sourcePageId;
+        $this->pageRedirections[$sourcePageId]['TargetPage'] = $targetPageId;
         $this->pageRedirections[$sourcePageId]['CreationDate'] = $this->currentDate;
         // If the call come from the admin page and not from the process function
         if (substr_count($_SERVER['HTTP_REFERER'], 'admin.php')) {
@@ -336,6 +336,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
      */
     function validateRedirection($sourcePageId)
     {
+        $sourcePageId = strtolower($sourcePageId);
         $this->pageRedirections[$sourcePageId]['IsValidate'] = 'Y';
         $this->savePageRedirections();
     }
@@ -347,6 +348,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
      */
     function getIsValidate($sourcePageId)
     {
+        $sourcePageId = strtolower($sourcePageId);
         if ($this->pageRedirections[$sourcePageId]['IsValidate'] == null) {
             return 'N';
         } else {
@@ -360,6 +362,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
      */
     function getTargetPageType($sourcePageId)
     {
+        $sourcePageId = strtolower($sourcePageId);
         return $this->pageRedirections[$sourcePageId]['TargetPageType'];
     }
 
@@ -369,6 +372,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
      */
     function getTargetResource($sourcePageId)
     {
+        $sourcePageId = strtolower($sourcePageId);
         return $this->pageRedirections[strtolower($sourcePageId)]['TargetPage'];
     }
 
@@ -378,6 +382,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
      */
     function updateRedirectionMetaData($sourcePageId)
     {
+        $sourcePageId = strtolower($sourcePageId);
         $this->pageRedirections[$sourcePageId]['LastRedirectionDate'] = $this->currentDate;
         $this->pageRedirections[$sourcePageId]['LastReferrer'] = $_SERVER['HTTP_REFERER'];
         $this->pageRedirections[$sourcePageId]['CountOfRedirection'] += 1;
