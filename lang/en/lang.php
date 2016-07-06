@@ -5,7 +5,7 @@
  * @license    GPL 2 (http://www.gnu.org/licenses/gpl.html)
  * @author     Nicolas GERARD <gerardnico@gmail.com>
  */
- 
+
 // ##################################
 // ############ Admin Page ##########
 // ##################################
@@ -39,7 +39,7 @@ $lang['AddModifyRedirection'] = "Add/Modify Redirection";
 $lang['ListOfRedirection'] = 'List of Redirections';
 
 //Explication Message
-$lang['ExplicationValidateRedirection'] = 'A validate redirection don\'t show any warning message. A unvalidate redirection is a proposition which comes from an action "Go to best page".';
+$lang['ExplicationValidateRedirection'] = 'A validate redirection don\'t show any warning message. A unvalidated redirection is a proposition which comes from an action "Go to best page".';
 $lang['ValidateToSuppressMessage'] = "You must approve (validate) the redirection to suppress the message of redirection.";
 
 // Forms Add/Modify Value

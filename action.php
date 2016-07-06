@@ -354,34 +354,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
             }
 
             // If Param show page name unique and it's not a start page
-            if ($this->getConf('ShowPageNameIsNotUnique') == 1 && $pageName <> $conf['start']) {
-
-                //Search same page name
-                require_once(DOKU_INC . 'inc/fulltext.php');
-                $pagesWithSameName = ft_pageLookup($pageName);
-
-                if (count($pagesWithSameName) > 0) {
-                    $this->messageType = 'Warning';
-                    if ($this->message <> '') {
-                        $this->message .= '<br/><br/>';
-                    }
-                    $this->message .= $this->lang['message_pagename_exist_one'];
-                    $this->message .= '<ul>';
-                    foreach ($pagesWithSameName as $PageId => $title) {
-                        if ($title == null) {
-                            $title = $PageId;
-                        }
-                        $this->message .= '<li>' .
-                            tpl_link(
-                                wl($PageId),
-                                $title,
-                                'class="" rel="nofollow" title="' . $title . '"',
-                                $return = true
-                            ) . '</li>';
-                    }
-                    $this->message .= '</ul>';
-                }
-            }
+            $this->addToMessagePagesWithSameName($pageName);
         }
 
 
@@ -455,6 +428,9 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
 
         }
 
+        // Add a list of page with the same name to the message
+        $this->addToMessagePagesWithSameName($ID);
+
         // Add or update the redirections
         if ($this->redirectManager->isRedirectionPresent($ID)) {
             $this->redirectManager->updateRedirectionMetaData($ID);
@@ -463,7 +439,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         }
 
         // Keep the message in session for display
-        //reopen session, store data and close session again
+        // Reopen session, store data and close session again
         @session_start();
         $msg['content'] = $this->message;
         $msg['type'] = $this->messageType;
@@ -506,10 +482,10 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
     }
 
     /**
-     * @param $ID
+     * @param $id
      * @return array
      */
-    private function getBestPage($ID)
+    private function getBestPage($id)
     {
 
         // The return parameters
@@ -517,7 +493,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         $scorePageName = null;
 
         // Get Score from a page
-        $pageName = noNS($ID);
+        $pageName = noNS($id);
         $pagesWithSameName = ft_pageLookup($pageName);
         if (count($pagesWithSameName) > 0) {
 
@@ -525,7 +501,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
             $bestNbWordFound = 0;
 
 
-            $wordsInPageSourceId = explode(':', $ID);
+            $wordsInPageSourceId = explode(':', $id);
             foreach ($pagesWithSameName as $targetPageId => $title) {
 
                 // Nb of word found in the target page id
@@ -557,6 +533,44 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         }
         return array($bestPageId, $scorePageName);
 
+    }
+
+    /**
+     * Add the page with the same page name but in an other location
+     * @param $pageId
+     */
+    private function addToMessagePagesWithSameName($pageId)
+    {
+        global $conf;
+
+        $pageName = noNS($pageId);
+        if ($this->getConf('ShowPageNameIsNotUnique') == 1 && $pageName <> $conf['start']) {
+
+            //Search same page name
+            $pagesWithSameName = ft_pageLookup($pageName);
+
+            if (count($pagesWithSameName) > 0) {
+                $this->messageType = 'Warning';
+                if ($this->message <> '') {
+                    $this->message .= '<br/><br/>';
+                }
+                $this->message .= $this->lang['message_pagename_exist_one'];
+                $this->message .= '<ul>';
+                foreach ($pagesWithSameName as $PageId => $title) {
+                    if ($title == null) {
+                        $title = $PageId;
+                    }
+                    $this->message .= '<li>' .
+                        tpl_link(
+                            wl($PageId),
+                            $title,
+                            'class="" rel="nofollow" title="' . $title . '"',
+                            $return = true
+                        ) . '</li>';
+                }
+                $this->message .= '</ul>';
+            }
+        }
     }
 
 

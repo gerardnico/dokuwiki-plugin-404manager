@@ -297,6 +297,7 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $conf['plugin'][constant_parameters::$PLUGIN_BASE]['WeightFactorForStartPage'] = 3;
         $conf['plugin'][constant_parameters::$PLUGIN_BASE]['WeightFactorForSameNamespace'] = 5;
         $conf['plugin'][constant_parameters::$PLUGIN_BASE]['WordsSeparator'] = ':';
+        $conf['plugin'][constant_parameters::$PLUGIN_BASE]['ShowPageNameIsNotUnique'] = 1;
 
         $request = new TestRequest();
         $request->get(array('id' => constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_SOURCE), '/doku.php');
@@ -310,7 +311,6 @@ class manager_plugin_404manager_test extends DokuWikiTest
         // $REDIRECT_TO_NAMESPACE_START_PAGE_GOOD_TARGET got a score of 13 (The base namespace 5 + the same namspace 5 + start page 3)
         $this->assertNotRegexp('/'.constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_BAD_TARGET.'/',$locationHeader,"The page was not redirected to the bad namespace");
         $this->assertRegexp('/'.constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_GOOD_TARGET.'/',$locationHeader,"The page was redirected to the start page");
-
 
     }
 
