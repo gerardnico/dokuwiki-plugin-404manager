@@ -1,5 +1,10 @@
 # Changes List
 
+
+## 2016-07-05
+  * The page path is no more split by an underscore `_` for the best page name. This is to avoid that the algorithm will calculate a bigger score for a page in another namespace and before all, namespace are here to categorize pages. The plugin is based on same name page.
+  * The best name space page doesn't check all namespace if the page ID that gives a 404 has a existing namespace
+
 ## 2016-06-26
   * If the user is a Writer and their is a redirection, a redirection doesn't occur anymore. The writer is redirected in `edit mode` and can create directly the page.
   * The redirection is a real redirection using 3XX HTTP status code in the same way that the plugin [redirect](https://www.dokuwiki.org/plugin:redirect).

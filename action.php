@@ -2,6 +2,9 @@
 
 if (!defined('DOKU_INC')) die();
 if (!defined('DOKU_PLUGIN')) define('DOKU_PLUGIN', DOKU_INC . 'lib/plugins/');
+// Needed for the page lookup
+require_once(DOKU_INC . 'inc/fulltext.php');
+// Needed to get the redirection manager
 require_once(DOKU_PLUGIN . 'action.php');
 
 class action_plugin_404manager extends DokuWiki_Action_Plugin
@@ -70,7 +73,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
 
     /**
      * Verify it their is a 404
-     * Code comes from <a href="https://github.com/splitbrain/dokuwiki-plugin-notfound/blob/master/action.php">Not Found Plugin</a>
+     * Inspiration comes from <a href="https://github.com/splitbrain/dokuwiki-plugin-notfound/blob/master/action.php">Not Found Plugin</a>
      * @param $event Doku_Event
      * @param $param
      * @return bool
@@ -173,55 +176,15 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
                     $scorePageName = 0;
                     $bestPageId = null;
 
-                    //Search same page name
-                    require_once(DOKU_INC . 'inc/fulltext.php');
-                    $pageName = noNS($ID);
-                    $pagesWithSameName = ft_pageLookup($pageName);
 
-                    //Get Score from a page
-                    if (count($pagesWithSameName) > 0) {
-
-                        // Search same namespace in the page found than in the Id page asked.
-                        $bestNbWordFound = 0;
-                        $bestPageId = null;
-
-                        $pageSourceIdToExplode = str_replace('_', ':', $ID);
-                        $wordsInPageSourceId = explode(':', $pageSourceIdToExplode);
-                        foreach ($pagesWithSameName as $targetPageId => $title) {
-
-                            // Nb of word found in the target page id
-                            // that are in the source page id
-                            $nbWordFound = 0;
-                            foreach ($wordsInPageSourceId as $word) {
-                                $nbWordFound = $nbWordFound + substr_count($targetPageId, $word);
-                            }
-
-                            if ($bestPageId == null) {
-
-                                $bestNbWordFound = $nbWordFound;
-                                $bestPageId = $targetPageId;
-
-                            } else {
-
-                                if ($nbWordFound >= $bestNbWordFound && strlen($bestPageId) > strlen($targetPageId)) {
-
-                                    $bestNbWordFound = $nbWordFound;
-                                    $bestPageId = $targetPageId;
-
-                                }
-
-                            }
-
-                        }
-                        $scorePageName = $this->getConf('WeightFactorForSamePageName') + $bestNbWordFound * $this->getConf('WeightFactorForSameNamespace');
-                    }
+                    list($bestPageId, $scorePageName) = $this->getBestPage($ID);
 
                     // Get Score from a Namespace
-                    list($bestNamespaceId, $Vl_ScoreNamespace) = explode(" ", $this->getBestNamespace($ID));
+                    list($bestNamespaceId, $namespaceScore) = $this->getBestNamespace($ID);
 
                     // Compare the two score
-                    if ($scorePageName > 0 or $Vl_ScoreNamespace > 0) {
-                        if ($scorePageName > $Vl_ScoreNamespace) {
+                    if ($scorePageName > 0 or $namespaceScore > 0) {
+                        if ($scorePageName > $namespaceScore) {
                             $this->redirectToDokuwikiPage($bestPageId, self::REDIRECT_SOURCE_BEST_PAGE_NAME);
                         } else {
                             $this->redirectToDokuwikiPage($bestNamespaceId, self::REDIRECT_SOURCE_BEST_PAGE_NAME);
@@ -315,42 +278,57 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
      * getBestNamespace
      * Return a list with 'BestNamespaceId Score'
      */
-    function getBestNamespace($id)
+    private function getBestNamespace($id)
     {
 
         global $conf;
 
-        $Vl_ListNamespaceId = ft_pageLookup($conf['start']);
+        // Parameters
+        $pageNameSpace = getNS($id);
 
-        $Vl_BestNbWordFound = 0;
-        $Vl_BestNamespaceId = '';
-
-        $Vl_IdToExplode = str_replace('_', ':', $id);
-        $Vl_WordsInId = explode(':', $Vl_IdToExplode);
-
-        foreach ($Vl_ListNamespaceId as $Vl_NamespaceId) {
-            $Vl_NbWordFound = 0;
-            foreach ($Vl_WordsInId as $Vl_Word) {
-                if (strlen($Vl_Word) > 2) {
-                    $Vl_NbWordFound = $Vl_NbWordFound + substr_count($Vl_NamespaceId, $Vl_Word);
-                }
-            }
-            if ($Vl_NbWordFound > $Vl_BestNbWordFound) {
-                //Take only the smallest namespace
-                if (strlen($Vl_NamespaceId) < strlen($Vl_BestNamespaceId) or $Vl_NbWordFound > $Vl_BestNbWordFound) {
-                    $Vl_BestNbWordFound = $Vl_NbWordFound;
-                    $Vl_BestNamespaceId = $Vl_NamespaceId;
-                }
-            }
-        }
-        $Vl_WfForStartPage = $this->getConf('WeightFactorForStartPage');
-        $Vl_WfForSameNamespace = $this->getConf('WeightFactorForSameNamespace');
-        if ($Vl_BestNbWordFound > 0) {
-            $Vl_Score = $Vl_BestNbWordFound * $Vl_WfForSameNamespace + $Vl_WfForStartPage;
+        // If the page has an existing namespace start page take it, other search other namespace
+        $startPageNameSpace = $pageNameSpace . ":";
+        $dateAt = '';
+        // $startPageNameSpace will get a full path (ie with start or the namespace
+        resolve_pageid($pageNameSpace, $startPageNameSpace, $exists, $dateAt, true);
+        if (page_exists($startPageNameSpace)) {
+            $nameSpaces = array ($startPageNameSpace);
         } else {
-            $Vl_Score = 0;
+            $nameSpaces = ft_pageLookup($conf['start']);
         }
-        return $Vl_BestNamespaceId . " " . $Vl_Score;
+
+        // Parameters and search the best namespace
+        $pathNames = explode(':', $pageNameSpace);
+        $bestNbWordFound = 0;
+        $bestNamespaceId = '';
+        foreach ($nameSpaces as $nameSpace) {
+
+            $nbWordFound = 0;
+            foreach ($pathNames as $pathName) {
+                if (strlen($pathName) > 2) {
+                    $nbWordFound = $nbWordFound + substr_count($nameSpace, $pathName);
+                }
+            }
+            if ($nbWordFound > $bestNbWordFound) {
+                // Take only the smallest namespace
+                if (strlen($nameSpace) < strlen($bestNamespaceId) or $nbWordFound > $bestNbWordFound) {
+                    $bestNbWordFound = $nbWordFound;
+                    $bestNamespaceId = $nameSpace;
+                }
+            }
+        }
+
+        $startPageFactor = $this->getConf('WeightFactorForStartPage');
+        $nameSpaceFactor = $this->getConf('WeightFactorForSameNamespace');
+        if ($bestNbWordFound > 0) {
+            $bestNamespaceScore = $bestNbWordFound * $nameSpaceFactor + $startPageFactor;
+        } else {
+            $bestNamespaceScore = 0;
+        }
+
+
+        return array($bestNamespaceId, $bestNamespaceScore);
+
     }
 
     /**
@@ -524,6 +502,60 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
 
         if (defined('DOKU_UNITTEST')) return; // no exits during unit tests
         exit();
+
+    }
+
+    /**
+     * @param $ID
+     * @return array
+     */
+    private function getBestPage($ID)
+    {
+
+        // The return parameters
+        $bestPageId = null;
+        $scorePageName = null;
+
+        // Get Score from a page
+        $pageName = noNS($ID);
+        $pagesWithSameName = ft_pageLookup($pageName);
+        if (count($pagesWithSameName) > 0) {
+
+            // Search same namespace in the page found than in the Id page asked.
+            $bestNbWordFound = 0;
+
+
+            $wordsInPageSourceId = explode(':', $ID);
+            foreach ($pagesWithSameName as $targetPageId => $title) {
+
+                // Nb of word found in the target page id
+                // that are in the source page id
+                $nbWordFound = 0;
+                foreach ($wordsInPageSourceId as $word) {
+                    $nbWordFound = $nbWordFound + substr_count($targetPageId, $word);
+                }
+
+                if ($bestPageId == null) {
+
+                    $bestNbWordFound = $nbWordFound;
+                    $bestPageId = $targetPageId;
+
+                } else {
+
+                    if ($nbWordFound >= $bestNbWordFound && strlen($bestPageId) > strlen($targetPageId)) {
+
+                        $bestNbWordFound = $nbWordFound;
+                        $bestPageId = $targetPageId;
+
+                    }
+
+                }
+
+            }
+            $scorePageName = $this->getConf('WeightFactorForSamePageName') + ($bestNbWordFound - 1) * $this->getConf('WeightFactorForSameNamespace');
+            return array($bestPageId, $scorePageName);
+        }
+        return array($bestPageId, $scorePageName);
 
     }
 

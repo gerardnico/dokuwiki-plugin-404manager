@@ -31,10 +31,20 @@ class constant_parameters
     static $REDIRECT_BEST_PAGE_NAME_TARGET_SAME_BRANCH;
     static $REDIRECT_BEST_PAGE_NAME_TARGET_OTHER_BRANCH;
 
-    const NS_PAGE = 'nsAttachedToPage';
 
-    const NS_BRANCH_1 = 'nsBranch1';
-    const NS_BRANCH_2 = 'nsBranch2';
+    static $REDIRECT_TO_NAMESPACE_START_PAGE_SOURCE;
+    static $REDIRECT_TO_NAMESPACE_START_PAGE_BAD_TARGET;
+    static $REDIRECT_TO_NAMESPACE_START_PAGE_GOOD_TARGET;
+
+    static $REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_SOURCE;
+    static $REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_BAD_TARGET;
+    static $REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_GOOD_TARGET;
+
+    // Page ID and namespace must be in lowercase
+    const NS_PAGE = 'ns_attached_to_page';
+    const NS_BRANCH_1 = 'ns_branch1';
+    const NS_BRANCH_2 = 'ns_branch2';
+    const NS_BRANCH_WITH_PARENT_NAME_START_PAGE = 'ns_branch3';
 
     static function init()
     {
@@ -59,6 +69,20 @@ class constant_parameters
         // Without Level1
         self::$REDIRECT_BEST_PAGE_NAME_TARGET_SAME_BRANCH = self::$MANAGER404_NAMESPACE . self::PATH_SEPARATOR . self::NS_PAGE . self::PATH_SEPARATOR .'redirect_best_page_name';
         self::$REDIRECT_BEST_PAGE_NAME_TARGET_OTHER_BRANCH = self::$MANAGER404_NAMESPACE . self::PATH_SEPARATOR . self::NS_BRANCH_2 . self::PATH_SEPARATOR . self::NS_PAGE . self::PATH_SEPARATOR .'redirect_best_page_name';
+
+        // Set of 3 pages, when a page has an homonym (same page name) but within another completly differents path (the name of the path have nothing in common)
+        // the 404 manager must redirect to the start page of the namespace.
+        self::$REDIRECT_TO_NAMESPACE_START_PAGE_SOURCE = self::$MANAGER404_NAMESPACE . self::PATH_SEPARATOR . self::NS_BRANCH_1 . self::PATH_SEPARATOR .'redirect_to_namespace_start_page';
+        self::$REDIRECT_TO_NAMESPACE_START_PAGE_BAD_TARGET = self::$MANAGER404_NAMESPACE . self::PATH_SEPARATOR . self::NS_BRANCH_2 . self::PATH_SEPARATOR  .'redirect_to_namespace_start_page';
+        self::$REDIRECT_TO_NAMESPACE_START_PAGE_GOOD_TARGET = self::$MANAGER404_NAMESPACE . self::PATH_SEPARATOR . self::NS_BRANCH_1 . self::PATH_SEPARATOR  .'start';
+
+
+        // Set of 3 pages, when a page has an homonym (same page name) but within another completly differents path (the name of the path have nothing in common)
+        // the 404 manager must redirect to the start page of the namespace.
+        self::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_SOURCE = self::$MANAGER404_NAMESPACE . self::PATH_SEPARATOR . self::NS_BRANCH_WITH_PARENT_NAME_START_PAGE . self::PATH_SEPARATOR .'redirect_to_namespace_start_page';
+        self::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_BAD_TARGET = self::$MANAGER404_NAMESPACE . self::PATH_SEPARATOR . self::NS_BRANCH_2 . self::PATH_SEPARATOR  .'redirect_to_namespace_start_page';
+        self::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_GOOD_TARGET = self::$MANAGER404_NAMESPACE . self::PATH_SEPARATOR . self::NS_BRANCH_WITH_PARENT_NAME_START_PAGE . self::PATH_SEPARATOR  . self::NS_BRANCH_WITH_PARENT_NAME_START_PAGE;
+
 
 
     }

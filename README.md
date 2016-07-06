@@ -84,9 +84,9 @@ To be sure that the reader is not totally lost because he asks for one page and 
 
 This action is always performed first in the process of redirection for a reader.
 
-### Redirection by best namepage
+### Redirection by best name page
 
-The redirection by best namepage is an simpe algorithm which occurs to find the best page by name.
+The redirection by best name page is an simple algorithm which occurs to find the best page by name.
 
 It calculate a score for two kinds of page :
 
@@ -97,7 +97,7 @@ A weight factor is applied and in this way, you can influence the redirection :
 
   * When a page have the same name (by default 4)
   * When a page is a start page of a namespace (by default 3)
-  * When a namespace match (by default 2)
+  * When a namespace match (by default 5)
 
 To change the default configuration, you must go to the [configuration settings](#configuration settings) page
 
@@ -108,10 +108,10 @@ To change the default configuration, you must go to the [configuration settings]
   * We have one startpage : namespace1:namespace2:start
 
 **Score :**
-  * The score for the page with the same name is : 6 = 2 (because namespace1 is present in the asked page) + 4 (because the page name match)
-  * The score for the startpage is : 7 = 2 (because namespace1 is present in the asked page) + 2 (because namespace2 is present in the asked page) + 3 (because it's a start page)
+  * The score for the page with the same name is : 9 = 5 (because namespace1 is present in the asked page) + 4 (because the page name match)
+  * The score for the startpage is : 13 = 5 (because namespace1 is present in the asked page) + 5 (because namespace2 is present in the asked page) + 3 (because it's a start page)
 
-In this case, the startpage is the redirect page because it have a highest score (7 against 6)
+In this case, the startpage is the redirect page because it have a highest score (13 against 9)
 
 ### Redirection by best namespace
 This redirection perform the same algorithm that the [redirection by best namepage](#Redirection by best namepage) but only for the start pages. If two start page for a namespace have the same score, the smallest start page is fired.
@@ -122,7 +122,7 @@ This redirection perform the same algorithm that the [redirection by best namepa
   * second start page : namespace1:start (Score 5 = 2 for namespace1 + 3 for the startpage)
 We have the same score and the redirection occur on the smallest start page : first start page.
 
-### Redirection to the interne search engine
+### Redirection to the intern search engine
 The 404 Manager redirects to the search engine.
 
 The query performed is an explode of the page asked.
