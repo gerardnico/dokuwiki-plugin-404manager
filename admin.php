@@ -3,21 +3,33 @@
 if (!defined('DOKU_INC')) die();
 
 if (!defined('DOKU_PLUGIN')) define('DOKU_PLUGIN', DOKU_INC . 'lib/plugins/');
+
+// Surpriselly their is not constant for the info level
+if (!defined('MANAGER404_MSG_ERROR')) define('MANAGER404_MSG_ERROR', -1);
+if (!defined('MANAGER404_MSG_INFO')) define('MANAGER404_MSG_INFO', 0);
+if (!defined('MANAGER404_MSG_SUCCESS')) define('MANAGER404_MSG_SUCCESS', 1);
+if (!defined('MANAGER404_MSG_NOTIFY')) define('MANAGER404_MSG_NOTIFY', 2);
+
 require_once(DOKU_PLUGIN . 'admin.php');
 require_once(DOKU_INC . 'inc/parser/xhtml.php');
 
 /**
  * All DokuWiki plugins to extend the admin function
  * need to inherit from this class
+ *
  */
 class admin_plugin_404manager extends DokuWiki_Admin_Plugin
 {
 
     // Variable var and not public/private because php4 can't handle this kind of variable
 
-    // To handle the redirection data
+    // The file path of the direct redirection (from an Page to a Page or URL)
     var $pageRedirectionsFilePath = '';
+    // The file path of the pattern redirection (from a Pattern)
+    private $pagePatternRedirectionsFilePath;
+
     var $pageRedirections = array();
+    var $pagePatternRedirections = array();
 
     // Use to pass parameter between the handle and the html function to keep the form data
     var $sourcePageId = '';
@@ -27,20 +39,43 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
     var $targetResourceType = 'Default';
     private $infoPlugin;
 
+    private $sqlite;
+
+
+
     function admin_plugin_404manager()
     {
-
-        //Set the redirection data
-        $this->pageRedirectionsFilePath = dirname(__FILE__) . '/404managerRedirect.conf';
-        if (@file_exists($this->pageRedirectionsFilePath)) {
-            $this->pageRedirections = unserialize(io_readFile($this->pageRedirectionsFilePath, false));
-        }
 
         // enable direct access to language strings
         // of use of $this->getLang
         $this->setupLocale();
         $this->currentDate = date("d/m/Y");
         $this->infoPlugin = $this->getInfo();
+
+
+        /** @var helper_plugin_sqlite $sqlite */
+        $this->sqlite = plugin_load('helper', 'sqlite');
+        if(!$this->sqlite){
+
+            msg($this->getLang('SqliteMandatory'), MANAGER404_MSG_INFO, $allow=MSG_MANAGERS_ONLY);
+
+            //Set the redirection data
+            $this->pageRedirectionsFilePath = dirname(__FILE__) . '/404managerRedirect.conf';
+            if (@file_exists($this->pageRedirectionsFilePath)) {
+                $this->pageRedirections = unserialize(io_readFile($this->pageRedirectionsFilePath, false));
+            }
+
+        } else {
+
+            // initialize the database connection
+            if(!$this->sqlite->init($this->info['base'],DOKU_PLUGIN.$this->info['base'].'/db/')){
+                msg($this->lang['SqliteUnableToInitialize'], MSG_MANAGERS_ONLY);
+                return;
+            }
+
+        }
+
+
     }
 
 
@@ -79,6 +114,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
      */
     function handle()
     {
+
         if ($_POST['Add']) {
 
             $this->sourcePageId = $_POST['SourcePage'];
@@ -89,40 +125,79 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
                 return;
             }
 
-            if (!page_exists($this->targetResource)) {
-                if ($this->isValidURL($this->targetResource)) {
-                    $this->targetResourceType = 'Url';
-                } else {
-                    msg($this->lang['NotInternalOrUrlPage'] . ': ' . $this->targetResource . '', -1);
-                    return;
-                }
-            } else {
-                $this->targetResourceType = 'Internal Page';
+            // Is this a regular expression pattern ?
+            $regularExpressionPattern = "/(\\/.*\\/[gmixXsuUAJ]?)/";
+            preg_match($regularExpressionPattern, $this->sourcePageId, $matches);
+            if ($matches) {
+
+                $pattern =  $this->sourcePageId;
+                $substitution = $this->targetResource;
+                $applyAlwaysSubstitution = $_POST['ApplyAlwaysSubstitution'];
+                $this->addPatternRedirection($pattern, $substitution, $applyAlwaysSubstitution);
+                msg($this->lang['Saved'], MSG_MANAGERS_ONLY);
+                return;
+
             }
 
-            global $conf;
+
+            // This a direct redirection
+            // If the source page exist, do nothing
             if (page_exists($this->sourcePageId)) {
+
                 $title = false;
+                global $conf;
                 if ($conf['useheading']) {
                     $title = p_get_first_heading($this->sourcePageId);
                 }
                 if (!$title) $title = $this->sourcePageId;
                 msg($this->lang['SourcePageExist'] . ' : <a href="' . wl($this->sourcePageId) . '">' . hsc($title) . '</a>', -1);
                 return;
+
+            } else {
+
+                // Is this a direct redirection to a valid target page
+                if (!page_exists($this->targetResource)) {
+
+                    if ($this->isValidURL($this->targetResource)) {
+
+                        $this->targetResourceType = 'Url';
+
+                    } else {
+
+                        msg($this->lang['NotInternalOrUrlPage'] . ': ' . $this->targetResource . '', -1);
+                        return;
+
+                    }
+
+                } else {
+
+                    $this->targetResourceType = 'Internal Page';
+
+                }
+                $this->addRedirection($this->sourcePageId, $this->targetResource);
+                msg($this->lang['Saved'], 1);
+
             }
 
-            $this->addRedirection($this->sourcePageId, $this->targetResource);
-            msg($this->lang['Saved'], 1);
+
 
         }
+
         if ($_POST['Delete']) {
-            $Vl_SourcePage = $_POST['SourcePage'];
-            $this->deleteRedirection($Vl_SourcePage);
+
+            $redirectionId = $_POST['SourcePage'];
+            $redirectionType = $_POST['RedirectionType'];
+            if ($redirectionType=='pattern') {
+                $this->deletePatternRedirection($redirectionId);
+            } else {
+                $this->deleteRedirection($redirectionId);
+            }
             msg($this->lang['Deleted'], 1);
+
         }
         if ($_POST['Validate']) {
-            $Vl_SourcePage = $_POST['SourcePage'];
-            $this->validateRedirection($Vl_SourcePage);
+            $redirectionId = $_POST['SourcePage'];
+            $this->validateRedirection($redirectionId);
             msg($this->lang['Validated'], 1);
         }
     }
@@ -407,6 +482,26 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
     {
         // of preg_match('/^https?:\/\//',$url) ? from redirect plugin
         return preg_match('|^http(s)?://[a-z0-9-]+(.[a-z0-9-]+)*(:[0-9]+)?(/.*)?$|i', $url);
+    }
+
+    function addPatternRedirection($pattern, $substitution, $applyAlwaysSubstitution)
+    {
+        $hash = hash($pattern.$substitution.$applyAlwaysSubstitution);
+        $this->pagePatternRedirections[$hash]['pattern'] = $pattern;
+        $this->pagePatternRedirections[$hash]['substitution'] = $substitution;
+        $this->pagePatternRedirections[$hash]['substitution'] = $applyAlwaysSubstitution;
+        $this->savePagePatternRedirections();
+    }
+
+    function savePagePatternRedirections()
+    {
+        io_saveFile($this->pagePatternRedirectionsFilePath, serialize($this->pagePatternRedirections));
+    }
+
+    function deletePatternRedirection($redirectionId)
+    {
+        unset($this->pagePatternRedirections[strtolower($redirectionId)]);
+        $this->savePagePatternRedirections();
     }
 
 

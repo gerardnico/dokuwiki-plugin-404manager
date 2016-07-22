@@ -1,6 +1,12 @@
 # Changes List
 
 
+## v1.2.0 ()
+  * Pattern redirection modifications added
+  * Redirection Vote are done directly by user
+  * Redirection Validation threshold
+  * Status code is now dependent of the redirection validation
+
 ## v1.1.0 (09-07-2016)
   * The page path is no more split by an underscore `_` for the best page name. This is to avoid that the algorithm will calculate a bigger score for a page in another namespace and before all, namespace are here to categorize pages. The plugin is based on same name page.
   * The best name space page doesn't check all namespace if the page ID that gives a 404 has a existing namespace

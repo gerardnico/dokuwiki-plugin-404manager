@@ -314,4 +314,36 @@ class manager_plugin_404manager_test extends DokuWikiTest
 
     }
 
+
+    public function test_internalRedirectWithPattern()
+    {
+
+        $redirectManager = new admin_plugin_404manager();
+        if ($redirectManager->isRedirectionPresent(constant_parameters::$REDIRECT_WITH_PATTERN_DIRECTLY_SOURCE)) {
+            $redirectManager->deleteRedirection(constant_parameters::$REDIRECT_WITH_PATTERN_DIRECTLY_SOURCE);
+        }
+
+        // Create the target Pages and add the pages to the index, otherwise, they will not be find by the ft_lookup
+        saveWikiText(constant_parameters::$REDIRECT_WITH_PATTERN_DIRECTLY_TARGET, 'Target for pattern replacement', 'Text');
+        idx_addPage(constant_parameters::$REDIRECT_WITH_PATTERN_DIRECTLY_TARGET);
+
+        // Read only otherwise, you go in edit mode
+        global $AUTH_ACL;
+        $aclReadOnlyFile = constant_parameters::$DIR_RESOURCES . '/acl.auth.read_only.php';
+        $AUTH_ACL = file($aclReadOnlyFile);
+
+
+        $request = new TestRequest();
+        $request->get(array('id' => constant_parameters::$REDIRECT_WITH_PATTERN_DIRECTLY_SOURCE), '/doku.php');
+        $response = $request->execute();
+
+
+        $locationHeader = $response->getHeader("Location");
+        $this->assertNotEquals(0,count($locationHeader),"Their must be minimal a redirection header.");
+
+        // $REDIRECT_TO_NAMESPACE_START_PAGE_GOOD_TARGET got a score of 13 (The base namespace 5 + the same namspace 5 + start page 3)
+        $this->assertRegexp('/'.constant_parameters::$REDIRECT_WITH_PATTERN_DIRECTLY_TARGET.'/',$locationHeader,"The page was redirected to the target page");
+
+    }
+
 }

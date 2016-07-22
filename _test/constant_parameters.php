@@ -46,6 +46,13 @@ class constant_parameters
     const NS_BRANCH_2 = 'ns_branch2';
     const NS_BRANCH_WITH_PARENT_NAME_START_PAGE = 'ns_branch3';
 
+    // For a pattern test
+    const NS_BRANCH_PATTERN_1 = 'ns_pattern';
+    const NS_BRANCH_PATTERN_2 = 'ns_pattern2';
+
+    static $REDIRECT_WITH_PATTERN_DIRECTLY_SOURCE;
+    static $REDIRECT_WITH_PATTERN_DIRECTLY_TARGET;
+
     static function init()
     {
         $pluginInfoFile = __DIR__ . '/../plugin.info.txt';
@@ -82,6 +89,12 @@ class constant_parameters
         self::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_SOURCE = self::$MANAGER404_NAMESPACE . self::PATH_SEPARATOR . self::NS_BRANCH_WITH_PARENT_NAME_START_PAGE . self::PATH_SEPARATOR .'redirect_to_namespace_start_page';
         self::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_BAD_TARGET = self::$MANAGER404_NAMESPACE . self::PATH_SEPARATOR . self::NS_BRANCH_2 . self::PATH_SEPARATOR  .'redirect_to_namespace_start_page';
         self::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_GOOD_TARGET = self::$MANAGER404_NAMESPACE . self::PATH_SEPARATOR . self::NS_BRANCH_WITH_PARENT_NAME_START_PAGE . self::PATH_SEPARATOR  . self::NS_BRANCH_WITH_PARENT_NAME_START_PAGE;
+
+        // After the pattern transformation, the page exist, no page search
+        // The target goes one level back (ie NS_BRANCH_PATTERN_2 doesn't exist anymore)
+        self::$REDIRECT_WITH_PATTERN_DIRECTLY_SOURCE = self::$MANAGER404_NAMESPACE . self::PATH_SEPARATOR . self::NS_BRANCH_PATTERN_1 . self::PATH_SEPARATOR  . self::NS_BRANCH_PATTERN_2 . self::PATH_SEPARATOR . self::$PAGE_EXIST_ID;
+        self::$REDIRECT_WITH_PATTERN_DIRECTLY_SOURCE = self::$MANAGER404_NAMESPACE . self::PATH_SEPARATOR . self::NS_BRANCH_PATTERN_2 . self::PATH_SEPARATOR . self::$PAGE_EXIST_ID;
+
 
 
 
