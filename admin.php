@@ -68,7 +68,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
         } else {
 
             // initialize the database connection
-            if(!$this->sqlite->init($this->info['base'],DOKU_PLUGIN.$this->info['base'].'/db/')){
+            if(!$this->sqlite->init($this->infoPlugin['base'],DOKU_PLUGIN.$this->infoPlugin['base'].'/db/')){
                 msg($this->lang['SqliteUnableToInitialize'], MSG_MANAGERS_ONLY);
                 return;
             }
@@ -212,6 +212,35 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
 
         echo $this->locale_xhtml('intro');
 
+        // Add a redirection
+        ptln('<h2><a name="add_redirection" id="add_redirection">' . $this->lang['AddModifyRedirection'] . '</a></h2>');
+        ptln('<div class="level2">');
+        ptln('<form action="" method="post">');
+        ptln('<table class="inline">');
+
+        ptln('<thead>');
+        ptln('		<tr><th>' . $this->lang['Field'] . '</th><th>' . $this->lang['Value'] . '</th> <th>' . $this->lang['Information'] . '</th></tr>');
+        ptln('</thead>');
+
+        ptln('<tbody>');
+        ptln('		<tr><td><label for="add_sourcepage" >' . $this->lang['source_page'] . ': </label></td><td><input type="text" id="add_sourcepage" name="SourcePage" value="' . $this->sourcePageId . '" class="edit" /></td><td>' . $this->lang['source_page_info'] . '</td></td></tr>');
+        ptln('		<tr><td><label for="add_targetpage" >' . $this->lang['target_page'] . ': </label></td><td><input type="text" id="add_targetpage" name="TargetPage" value="' . $this->targetResource . '" class="edit" /></td><td></td></tr>');
+        ptln('		<tr><td><label for="add_valid" >' . $this->lang['redirection_valid'] . ': </label></td><td>' . $this->lang['yes'] . '</td><td>'.$this->lang['ExplicationValidateRedirection'] .'</td></tr>');
+        ptln('		<tr>');
+        ptln('			<td colspan="3">');
+        ptln('				<input type="hidden" name="do"    value="admin" />');
+        ptln('				<input type="hidden" name="page"  value="404manager" />');
+        ptln('				<input type="submit" name="Add" class="button" value="'.$this->lang['btn_addmodify'].'" />');
+        ptln('			</td>');
+        ptln('		</tr>');
+        ptln('</tbody>');
+        ptln('</table>');
+        ptln('</form>');
+
+        // Add the file add from the lang directory
+        echo $this->locale_xhtml('add');
+        ptln('</div>');
+
 
 //      List of redirection
         ptln('<h2><a name="list_redirection" id="list_redirection">' . $this->lang['ListOfRedirection'] . '</a></h2>');
@@ -283,40 +312,9 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
         }
         ptln('  </tbody>');
         ptln('</table>');
-        ptln('<div class="fn">' . $this->lang['ExplicationValidateRedirection'] . '</div>');
-        ptln('</div>'); //End Tabel responsive
+        ptln('</div>'); //End Table responsive
         ptln('</div>'); // End level 2
 
-        // Add a redirection
-        ptln('<h2><a name="add_redirection" id="add_redirection">' . $this->lang['AddModifyRedirection'] . '</a></h2>');
-        ptln('<div class="level2">');
-        ptln('<form action="" method="post">');
-        ptln('<table class="inline">');
-
-        ptln('<thead>');
-        ptln('		<tr><th>' . $this->lang['Field'] . '</th><th>' . $this->lang['Value'] . '</th></tr>');
-        ptln('</thead>');
-
-        ptln('<tbody>');
-        ptln('		<tr><td><label for="add_sourcepage" >' . $this->lang['source_page'] . '.: </label></td><td><input type="text" id="add_sourcepage" name="SourcePage" value="' . $this->sourcePageId . '" class="edit" /></td></tr>');
-        ptln('		<tr><td><label for="add_targetpage" >' . $this->lang['target_page'] . ': </label></td><td><input type="text" id="add_targetpage" name="TargetPage" value="' . $this->targetResource . '" class="edit" /></td></tr>');
-        ptln('		<tr><td><label for="add_valid" >' . $this->lang['redirection_valid'] . ': </label></td><td>' . $this->lang['yes'] . '</td></tr>');
-        ptln('</tbody>');
-
-        ptln('<tbody>');
-        ptln('		<tr>');
-        ptln('			<td colspan="2">');
-        ptln('				<input type="hidden" name="do"    value="admin" />');
-        ptln('				<input type="hidden" name="page"  value="404manager" />');
-        ptln('				<input type="submit" name="Add" class="button" value="' . $this->lang['btn_addmodify'] . '" />');
-        ptln('			</td>');
-        ptln('		</tr>');
-        ptln('</tbody>');
-        ptln('</table>');
-
-        ptln('</form>');
-        echo $this->locale_xhtml('add');
-        ptln('</div>');
 
 
     }
