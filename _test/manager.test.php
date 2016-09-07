@@ -1,6 +1,7 @@
 <?php
 /**
- * DokuWiki function tests for the 404manager plugin
+ * Integration Tests for the 404manager plugin through Dokuwiki Request
+ * Each test is a redirect case
  *
  * @group plugin_404manager
  * @group plugins
@@ -66,7 +67,7 @@ class manager_plugin_404manager_test extends DokuWikiTest
 
 
     /**
-     * Test a redirect to an internal page that doesn't exist
+     * Test a redirect to an internal page that does not exist
      */
     public function test_internalRedirectToNonExistingPage()
     {
@@ -314,7 +315,9 @@ class manager_plugin_404manager_test extends DokuWikiTest
 
     }
 
-
+    /*
+     * Test a redirection through pattern transformation
+     */
     public function test_internalRedirectWithPattern()
     {
 

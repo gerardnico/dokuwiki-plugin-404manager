@@ -98,7 +98,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         // Global variable needed in the process
         global $ID;
         global $conf;
-        $targetPage = $this->redirectManager->getTargetResource($ID);
+        $targetPage = $this->redirectManager->getRedirectionTarget($ID);
 
         // If this is an external redirect
         if ($this->redirectManager->isValidURL($targetPage) && $targetPage) {

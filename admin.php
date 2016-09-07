@@ -32,8 +32,9 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
     var $pagePatternRedirections = array();
 
     // Use to pass parameter between the handle and the html function to keep the form data
-    var $sourcePageId = '';
-    var $targetResource = '';
+    var $redirectionSource = '';
+    var $redirectionTarget = '';
+    private $redirectionType;
     var $currentDate = '';
     var $isValidate = '';
     var $targetResourceType = 'Default';
@@ -117,54 +118,58 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
 
         if ($_POST['Add']) {
 
-            $this->sourcePageId = $_POST['SourcePage'];
-            $this->targetResource = $_POST['TargetPage'];
+            $this->redirectionSource = $_POST['Source'];
+            $this->redirectionTarget = $_POST['Target'];
+            $this->redirectionType = $_POST['Type'];
 
-            if ($this->sourcePageId == $this->targetResource) {
-                msg($this->lang['SameSourceAndTargetAndPage'] . ': ' . $this->sourcePageId . '', -1);
+            if ($this->redirectionSource == $this->redirectionTarget) {
+                msg($this->lang['SameSourceAndTargetAndPage'] . ': ' . $this->redirectionSource . '', -1);
                 return;
             }
 
             // Is this a regular expression pattern ?
-            $regularExpressionPattern = "/(\\/.*\\/[gmixXsuUAJ]?)/";
-            preg_match($regularExpressionPattern, $this->sourcePageId, $matches);
-            if ($matches) {
+            if ($this->redirectionType == 'Pattern') {
 
-                $pattern =  $this->sourcePageId;
-                $substitution = $this->targetResource;
-                $applyAlwaysSubstitution = $_POST['ApplyAlwaysSubstitution'];
-                $this->addPatternRedirection($pattern, $substitution, $applyAlwaysSubstitution);
-                msg($this->lang['Saved'], MSG_MANAGERS_ONLY);
-                return;
+                $matches = self::isRegularExpression($this->redirectionSource);
+                if ($matches) {
+
+                    $pattern = $this->redirectionSource;
+                    $substitution = $this->redirectionTarget;
+                    $applyAlwaysSubstitution = $_POST['ApplyAlwaysSubstitution'];
+                    $this->addPatternRedirection($pattern, $substitution, $applyAlwaysSubstitution);
+                    msg($this->lang['Saved'], MSG_MANAGERS_ONLY);
+                    return;
+
+                }
 
             }
 
 
             // This a direct redirection
             // If the source page exist, do nothing
-            if (page_exists($this->sourcePageId)) {
+            if (page_exists($this->redirectionSource)) {
 
                 $title = false;
                 global $conf;
                 if ($conf['useheading']) {
-                    $title = p_get_first_heading($this->sourcePageId);
+                    $title = p_get_first_heading($this->redirectionSource);
                 }
-                if (!$title) $title = $this->sourcePageId;
-                msg($this->lang['SourcePageExist'] . ' : <a href="' . wl($this->sourcePageId) . '">' . hsc($title) . '</a>', -1);
+                if (!$title) $title = $this->redirectionSource;
+                msg($this->lang['SourcePageExist'] . ' : <a href="' . wl($this->redirectionSource) . '">' . hsc($title) . '</a>', -1);
                 return;
 
             } else {
 
                 // Is this a direct redirection to a valid target page
-                if (!page_exists($this->targetResource)) {
+                if (!page_exists($this->redirectionTarget)) {
 
-                    if ($this->isValidURL($this->targetResource)) {
+                    if ($this->isValidURL($this->redirectionTarget)) {
 
                         $this->targetResourceType = 'Url';
 
                     } else {
 
-                        msg($this->lang['NotInternalOrUrlPage'] . ': ' . $this->targetResource . '', -1);
+                        msg($this->lang['NotInternalOrUrlPage'] . ': ' . $this->redirectionTarget . '', -1);
                         return;
 
                     }
@@ -174,7 +179,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
                     $this->targetResourceType = 'Internal Page';
 
                 }
-                $this->addRedirection($this->sourcePageId, $this->targetResource);
+                $this->addRedirection($this->redirectionSource, $this->redirectionTarget);
                 msg($this->lang['Saved'], 1);
 
             }
@@ -223,8 +228,8 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
         ptln('</thead>');
 
         ptln('<tbody>');
-        ptln('		<tr><td><label for="add_sourcepage" >' . $this->lang['source_page'] . ': </label></td><td><input type="text" id="add_sourcepage" name="SourcePage" value="' . $this->sourcePageId . '" class="edit" /></td><td>' . $this->lang['source_page_info'] . '</td></td></tr>');
-        ptln('		<tr><td><label for="add_targetpage" >' . $this->lang['target_page'] . ': </label></td><td><input type="text" id="add_targetpage" name="TargetPage" value="' . $this->targetResource . '" class="edit" /></td><td></td></tr>');
+        ptln('		<tr><td><label for="add_sourcepage" >' . $this->lang['source_page'] . ': </label></td><td><input type="text" id="add_sourcepage" name="SourcePage" value="' . $this->redirectionSource . '" class="edit" /></td><td>' . $this->lang['source_page_info'] . '</td></td></tr>');
+        ptln('		<tr><td><label for="add_targetpage" >' . $this->lang['target_page'] . ': </label></td><td><input type="text" id="add_targetpage" name="TargetPage" value="' . $this->redirectionTarget . '" class="edit" /></td><td></td></tr>');
         ptln('		<tr><td><label for="add_valid" >' . $this->lang['redirection_valid'] . ': </label></td><td>' . $this->lang['yes'] . '</td><td>'.$this->lang['ExplicationValidateRedirection'] .'</td></tr>');
         ptln('		<tr>');
         ptln('			<td colspan="3">');
@@ -443,7 +448,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
      * Get TargetResource (It can be an external URL as an intern page id
      * @param    string $sourcePageId
      */
-    function getTargetResource($sourcePageId)
+    function getRedirectionTarget($sourcePageId)
     {
         $sourcePageId = strtolower($sourcePageId);
         return $this->pageRedirections[strtolower($sourcePageId)]['TargetPage'];
@@ -500,6 +505,21 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
     {
         unset($this->pagePatternRedirections[strtolower($redirectionId)]);
         $this->savePagePatternRedirections();
+    }
+
+    /**
+     * @return 1, 0 or false
+     * returns:
+     *    - 1 if the input expression is a pattern,
+     *    - 0 if not,
+     *    - FALSE if an error occurred.
+     */
+    static function isRegularExpression($inputExpression)
+    {
+
+        $regularExpressionPattern = "/(\\/.*\\/[gmixXsuUAJ]?)/";
+        return preg_match($regularExpressionPattern, $inputExpression);
+
     }
 
 
