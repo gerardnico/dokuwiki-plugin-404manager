@@ -4,7 +4,7 @@ if (!defined('DOKU_INC')) die();
 
 if (!defined('DOKU_PLUGIN')) define('DOKU_PLUGIN', DOKU_INC . 'lib/plugins/');
 
-// Surpriselly their is not constant for the info level
+// Surprisingly there is no constant for the info level
 if (!defined('MANAGER404_MSG_ERROR')) define('MANAGER404_MSG_ERROR', -1);
 if (!defined('MANAGER404_MSG_INFO')) define('MANAGER404_MSG_INFO', 0);
 if (!defined('MANAGER404_MSG_SUCCESS')) define('MANAGER404_MSG_SUCCESS', 1);
@@ -69,7 +69,9 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
         } else {
 
             // initialize the database connection
-            if(!$this->sqlite->init($this->infoPlugin['base'],DOKU_PLUGIN.$this->infoPlugin['base'].'/db/')){
+            $pluginName = $this->infoPlugin['base'];
+            $init = $this->sqlite->init($pluginName, DOKU_PLUGIN . $pluginName . '/db/');
+            if(!$init){
                 msg($this->lang['SqliteUnableToInitialize'], MSG_MANAGERS_ONLY);
                 return;
             }
@@ -447,6 +449,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
     /**
      * Get TargetResource (It can be an external URL as an intern page id
      * @param    string $sourcePageId
+     * @return
      */
     function getRedirectionTarget($sourcePageId)
     {

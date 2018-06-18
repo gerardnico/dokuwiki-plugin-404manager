@@ -10,9 +10,6 @@ require_once(DOKU_PLUGIN . 'action.php');
 class action_plugin_404manager extends DokuWiki_Action_Plugin
 {
 
-    var $message = '';
-    var $messageType = 'Classic';
-
 
     var $targetId = '';
     var $sourceId = '';
@@ -43,15 +40,32 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
     // It will comes in the global $ACT variable
     const ACTION_NAME = '404manager';
 
-    function action_plugin_404manager()
+    // The name in the session variable
+    const MANAGER404_MSG = '404manager_msg';
+
+    // To identify the object
+    private $objectId;
+
+    // Query String variable name to send the redirection message
+    const QUERY_STRING_ORIGIN_PAGE = '404id';
+    const QUERY_STRING_REDIR_TYPE = '404type';
+
+    // Message
+    private $message;
+
+    function __construct()
     {
         // enable direct access to language strings
         $this->setupLocale();
+        require_once(dirname(__FILE__) . '/Message404.php');
+        $this->message = new Message404();
     }
 
 
     function register(Doku_Event_Handler $controller)
     {
+
+        $this->objectId = spl_object_hash($this);
 
         /* This will call the function _handle404 */
         $controller->register_hook('DOKUWIKI_STARTED',
@@ -72,11 +86,12 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
     }
 
     /**
-     * Verify it their is a 404
+     * Verify if there is a 404
      * Inspiration comes from <a href="https://github.com/splitbrain/dokuwiki-plugin-notfound/blob/master/action.php">Not Found Plugin</a>
      * @param $event Doku_Event
      * @param $param
-     * @return bool
+     * @return bool not required
+     * @throws Exception
      */
     function _handle404(&$event, $param)
     {
@@ -90,8 +105,10 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         // We instantiate the redirect manager because it's use overall
         // it holds the function and methods
         require_once(dirname(__FILE__) . '/admin.php');
-        $this->redirectManager = new admin_plugin_404manager();
-        // Event is also used in some subfunction, we make it them object scope
+        if ($this->redirectManager == null) {
+            $this->redirectManager = new admin_plugin_404manager();
+        }
+        // Event is also used in some sub-function, we make it them object scope
         $this->event = $event;
 
 
@@ -152,7 +169,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
             switch ($readerAlgorithms[$i]) {
 
                 case self::NOTHING:
-                    return;
+                    return true;
                     break;
 
                 case self::GO_TO_NS_START_PAGE:
@@ -161,19 +178,18 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
                     $startPage = getNS($ID) . ':' . $conf['start'];
                     if (page_exists($startPage)) {
                         $this->redirectToDokuwikiPage($startPage, self::REDIRECT_SOURCE_START_PAGE);
-                        return;
+                        return true;
                     }
                     // Start page with the same name than the namespace
                     $startPage = getNS($ID) . ':' . curNS($ID);
                     if (page_exists($startPage)) {
                         $this->redirectToDokuwikiPage($startPage, self::REDIRECT_SOURCE_START_PAGE);
-                        return;
+                        return true;
                     }
                     break;
 
                 case self::GO_TO_BEST_PAGE_NAME:
 
-                    $scorePageName = 0;
                     $bestPageId = null;
 
 
@@ -189,7 +205,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
                         } else {
                             $this->redirectToDokuwikiPage($bestNamespaceId, self::REDIRECT_SOURCE_BEST_PAGE_NAME);
                         }
-                        return;
+                        return true;
                     }
                     break;
 
@@ -205,9 +221,9 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
 
                 case self::GO_TO_SEARCH_ENGINE:
 
-                    //do fulltext search
-                    $this->message = sprintf($this->lang['message_redirected_to_searchengine'], hsc($ID));
-                    $this->messageType = 'Warning';
+                    // do fulltext search
+                    $this->message->addContent(sprintf($this->lang['message_redirected_to_searchengine'], hsc($ID)));
+                    $this->message->setType(Message404::TYPE_WARNING);
 
                     global $QUERY;
                     $QUERY = str_replace(':', ' ', $ID);
@@ -236,39 +252,50 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
     function _displayRedirectMessage(&$event, $param)
     {
 
+        // After a redirect to another page via query string ?
+        global $INPUT;
+        // Comes from method redirectToDokuwikiPage
+        $pageIdOrigin = $INPUT->str(self::QUERY_STRING_ORIGIN_PAGE);
+
+        if ($pageIdOrigin) {
+
+            $redirectSource = $INPUT->str(self::QUERY_STRING_REDIR_TYPE);
+
+            switch ($redirectSource) {
+
+                case self::REDIRECT_SOURCE_REDIRECT:
+                    // This is an internal ID
+                    if ($this->redirectManager->getIsValidate($pageIdOrigin) == 'N') {
+                        $this->message->addContent(sprintf($this->lang['message_redirected_by_redirect'], hsc($pageIdOrigin)));
+                        $this->message->setType(Message404::TYPE_WARNING);
+                    };
+                    break;
+
+                case self::REDIRECT_SOURCE_START_PAGE:
+                    $this->message->addContent(sprintf($this->lang['message_redirected_to_startpage'], hsc($pageIdOrigin)));
+                    $this->message->setType(Message404::TYPE_WARNING);
+                    break;
+
+                case  self::REDIRECT_SOURCE_BEST_PAGE_NAME:
+                    $this->message->addContent(sprintf($this->lang['message_redirected_to_bestpagename'], hsc($pageIdOrigin)));
+                    $this->message->setType(Message404::TYPE_WARNING);
+                    break;
+
+                case self::REDIRECT_SOURCE_BEST_NAMESPACE:
+                    $this->message->addContent(sprintf($this->lang['message_redirected_to_bestnamespace'], hsc($pageIdOrigin)));
+                    $this->message->setType(Message404::TYPE_WARNING);
+                    break;
+
+            }
+
+            // Add a list of page with the same name to the message
+            $this->addToMessagePagesWithSameName($pageIdOrigin);
+
+        }
+
         if ($event->data == 'show' || $event->data == 'edit' || $event->data == 'search') {
 
-
-            // load left over messages from redirect
-            // See method redirectToDokuwikiPage
-            if (isset($_SESSION[DOKU_COOKIE]['404manager_msg'])) {
-                $msg = $_SESSION[DOKU_COOKIE]['404manager_msg'];
-                $this->message = $msg['content'];
-                $this->messageType = $msg['type'];
-                // Session start seems important if we want to unset the variable
-                @session_start();
-                unset($_SESSION[DOKU_COOKIE]['404manager_msg']);
-
-            }
-
-            if ($this->message) {
-
-                $pluginInfo = $this->getInfo();
-                // a class can not start with a number then 404manager is not a valid class name
-                $redirectManagerClass = "redirect-manager";
-
-                if ($this->messageType == 'Classic') {
-                    ptln('<div class="alert alert-success ' . $redirectManagerClass . '" role="alert">');
-                } else {
-                    ptln('<div class="alert alert-warning ' . $redirectManagerClass . '" role="alert">');
-                }
-                print $this->message;
-
-
-                print '<div class="managerreference">' . $this->lang['message_come_from'] . ' <a href="' . $pluginInfo['url'] . '" class="urlextern" title="' . $pluginInfo['desc'] . '"  rel="nofollow">' . $pluginInfo['name'] . '</a>.</div>';
-                print('</div>');
-
-            }
+            $this->printMessage($this->message);
 
         }
     }
@@ -292,7 +319,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         // $startPageNameSpace will get a full path (ie with start or the namespace
         resolve_pageid($pageNameSpace, $startPageNameSpace, $exists, $dateAt, true);
         if (page_exists($startPageNameSpace)) {
-            $nameSpaces = array ($startPageNameSpace);
+            $nameSpaces = array($startPageNameSpace);
         } else {
             $nameSpaces = ft_pageLookup($conf['start']);
         }
@@ -349,12 +376,14 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         if ($pageName != $conf['sidebar']) {
 
             if ($this->getConf('ShowMessageClassic') == 1) {
-                $this->message = $this->lang['message_redirected_to_edit_mode'];
-                $this->messageType = 'Classic';
+                $this->message->addContent($this->lang['message_redirected_to_edit_mode']);
+                $this->message->setType(Message404::TYPE_CLASSIC);
             }
 
             // If Param show page name unique and it's not a start page
-            $this->addToMessagePagesWithSameName($pageName);
+            $this->addToMessagePagesWithSameName($ID);
+
+
         }
 
 
@@ -385,6 +414,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
      * Redirect to an internal page, no external resources
      * @param $targetPage the target page id or an URL
      * @param string|the $redirectSource the source of the redirect
+     * @throws Exception
      */
     private function redirectToDokuwikiPage($targetPage, $redirectSource = 'Not Known')
     {
@@ -401,36 +431,6 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
             return;
         }
 
-        switch ($redirectSource) {
-
-            case self::REDIRECT_SOURCE_REDIRECT:
-                // This is an internal ID
-                if ($this->redirectManager->getIsValidate($ID) == 'N') {
-                    $this->message = sprintf($this->lang['message_redirected_by_redirect'], hsc($ID));
-                    $this->messageType = 'Warning';
-                };
-                break;
-
-            case self::REDIRECT_SOURCE_START_PAGE:
-                $this->message = sprintf($this->lang['message_redirected_to_startpage'], hsc($ID));
-                $this->messageType = 'Warning';
-                break;
-
-            case  self::REDIRECT_SOURCE_BEST_PAGE_NAME:
-                $this->message = sprintf($this->lang['message_redirected_to_bestpagename'], hsc($ID));
-                $this->messageType = 'Warning';
-                break;
-
-            case self::REDIRECT_SOURCE_BEST_NAMESPACE:
-                $this->message = sprintf($this->lang['message_redirected_to_bestnamespace'], hsc($ID));
-                $this->messageType = 'Warning';
-                break;
-
-        }
-
-        // Add a list of page with the same name to the message
-        $this->addToMessagePagesWithSameName($ID);
-
         // Add or update the redirections
         if ($this->redirectManager->isRedirectionPresent($ID)) {
             $this->redirectManager->updateRedirectionMetaData($ID);
@@ -438,22 +438,16 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
             $this->redirectManager->addRedirection($ID, $targetPage);
         }
 
-        // Keep the message in session for display
-        // Reopen session, store data and close session again
-        @session_start();
-        $msg['content'] = $this->message;
-        $msg['type'] = $this->messageType;
-        $_SESSION[DOKU_COOKIE]['404manager_msg'] = $msg;
-        // always close the session
-        session_write_close();
-
+        // Explode the page ID and the anchor (#)
         $link = explode('#', $targetPage, 2);
-        // TODO: Status code
-        // header('HTTP/1.1 301 Moved Permanently');
-        send_redirect(wl($link[0], '', true) . '#' . rawurlencode($link[1]));
 
-        if (defined('DOKU_UNITTEST')) return; // no exits during unit tests
-        exit();
+        // Query String to pass the message
+        $messageQueryString = "?" . self::QUERY_STRING_ORIGIN_PAGE . "=" . rawurlencode($ID) . "&" . self::QUERY_STRING_REDIR_TYPE . "=" . rawurlencode($redirectSource);
+
+        // TODO: Status code
+        // header('HTTP/1.1 301 Moved Permanently') will cache it in the browser !!!
+
+        send_redirect(wl($link[0], '', true) . $messageQueryString . '#' . rawurlencode($link[1]));
 
     }
 
@@ -541,6 +535,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
      */
     private function addToMessagePagesWithSameName($pageId)
     {
+
         global $conf;
 
         $pageName = noNS($pageId);
@@ -550,26 +545,66 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
             $pagesWithSameName = ft_pageLookup($pageName);
 
             if (count($pagesWithSameName) > 0) {
-                $this->messageType = 'Warning';
-                if ($this->message <> '') {
-                    $this->message .= '<br/><br/>';
+
+                $this->message->setType(Message404::TYPE_WARNING);
+
+                // Assign the value to a variable to be able to use the construct .=
+                if ($this->message->getContent() <> '') {
+                    $this->message->addContent('<br/><br/>');
                 }
-                $this->message .= $this->lang['message_pagename_exist_one'];
-                $this->message .= '<ul>';
+                $this->message->addContent($this->lang['message_pagename_exist_one']);
+                $this->message->addContent('<ul>');
+
+                $i = 0;
                 foreach ($pagesWithSameName as $PageId => $title) {
+                    $i++;
+                    if ($i > 10) {
+                        $this->message->addContent('<li>' .
+                            tpl_link(
+                                "doku.php?id=".$pageId."&do=search&q=".rawurldecode($pageName),
+                                "More ...",
+                                'class="" rel="nofollow" title="More..."',
+                                $return = true
+                            ) . '</li>');
+                        break;
+                    }
                     if ($title == null) {
                         $title = $PageId;
                     }
-                    $this->message .= '<li>' .
+                    $this->message->addContent('<li>' .
                         tpl_link(
                             wl($PageId),
                             $title,
                             'class="" rel="nofollow" title="' . $title . '"',
                             $return = true
-                        ) . '</li>';
+                        ) . '</li>');
                 }
-                $this->message .= '</ul>';
+                $this->message->addContent('</ul>');
             }
+        }
+    }
+
+    /**
+     * @param $message
+     */
+    private function printMessage($message): void
+    {
+        if ($this->message->getContent() <> "") {
+            $pluginInfo = $this->getInfo();
+            // a class can not start with a number then 404manager is not a valid class name
+            $redirectManagerClass = "redirect-manager";
+
+            if ($this->message->getType() == Message404::TYPE_CLASSIC) {
+                ptln('<div class="alert alert-success ' . $redirectManagerClass . '" role="alert">');
+            } else {
+                ptln('<div class="alert alert-warning ' . $redirectManagerClass . '" role="alert">');
+            }
+
+            print $this->message->getContent();
+
+
+            print '<div class="managerreference">' . $this->lang['message_come_from'] . ' <a href="' . $pluginInfo['url'] . '" class="urlextern" title="' . $pluginInfo['desc'] . '"  rel="nofollow">' . $pluginInfo['name'] . '</a>.</div>';
+            print('</div>');
         }
     }
 
