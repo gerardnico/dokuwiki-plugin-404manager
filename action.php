@@ -10,7 +10,6 @@ require_once(DOKU_PLUGIN . 'action.php');
 class action_plugin_404manager extends DokuWiki_Action_Plugin
 {
 
-
     var $targetId = '';
     var $sourceId = '';
 
@@ -19,6 +18,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
     const REDIRECT_SOURCE_START_PAGE = 'startPage';
     const REDIRECT_SOURCE_BEST_PAGE_NAME = 'bestPageName';
     const REDIRECT_SOURCE_BEST_NAMESPACE = 'bestNamespace';
+    const REDIRECT_SEARCH_ENGINE = 'searchEngine';
     const GO_TO_SEARCH_ENGINE = 'GoToSearchEngine';
     const GO_TO_BEST_NAMESPACE = 'GoToBestNamespace';
     const GO_TO_BEST_PAGE_NAME = 'GoToBestPageName';
@@ -221,13 +221,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
 
                 case self::GO_TO_SEARCH_ENGINE:
 
-                    // do fulltext search
-                    $this->message->addContent(sprintf($this->lang['message_redirected_to_searchengine'], hsc($ID)));
-                    $this->message->setType(Message404::TYPE_WARNING);
-
-                    global $QUERY;
-                    $QUERY = str_replace(':', ' ', $ID);
-                    $ACT = 'search';
+                    $this->redirectToSearchEngine();
 
                     return true;
                     break;
@@ -283,6 +277,11 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
 
                 case self::REDIRECT_SOURCE_BEST_NAMESPACE:
                     $this->message->addContent(sprintf($this->lang['message_redirected_to_bestnamespace'], hsc($pageIdOrigin)));
+                    $this->message->setType(Message404::TYPE_WARNING);
+                    break;
+
+                case self::REDIRECT_SEARCH_ENGINE:
+                    $this->message->addContent(sprintf($this->lang['message_redirected_to_searchengine'], hsc($pageIdOrigin)));
                     $this->message->setType(Message404::TYPE_WARNING);
                     break;
 
@@ -442,19 +441,25 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         $link = explode('#', $targetPage, 2);
 
         // Query String to pass the message
-        $messageQueryString = "?" . self::QUERY_STRING_ORIGIN_PAGE . "=" . rawurlencode($ID) . "&" . self::QUERY_STRING_REDIR_TYPE . "=" . rawurlencode($redirectSource);
+        $urlParams = array(
+            self::QUERY_STRING_ORIGIN_PAGE=>$ID,
+            self::QUERY_STRING_REDIR_TYPE=>$redirectSource
+        );
 
         // TODO: Status code
         // header('HTTP/1.1 301 Moved Permanently') will cache it in the browser !!!
 
-        send_redirect(wl($link[0], '', true) . $messageQueryString . '#' . rawurlencode($link[1]));
+        $wl = wl($link[0], $urlParams, true, '&');
+        if ($link[1]){
+            $wl .= '#' . rawurlencode($link[1]);
+        }
+        send_redirect($wl);
 
     }
 
     /**
      * Redirect to an internal page, no external resources
-     * @param $url the target page id or an URL
-     * @param string|the $redirectSource the source of the redirect
+     * @param string $url target page id or an URL
      */
     private function redirectToExternalPage($url)
     {
@@ -606,6 +611,32 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
             print '<div class="managerreference">' . $this->lang['message_come_from'] . ' <a href="' . $pluginInfo['url'] . '" class="urlextern" title="' . $pluginInfo['desc'] . '"  rel="nofollow">' . $pluginInfo['name'] . '</a>.</div>';
             print('</div>');
         }
+    }
+
+    /**
+     * Redirect to the search engine
+     */
+    private function redirectToSearchEngine()
+    {
+
+        global $ID;
+
+        $query = str_replace(':', ' ', $ID);
+
+        $urlParams = array(
+            "do"=>"search",
+            "q"=> $query,
+            self::QUERY_STRING_ORIGIN_PAGE=>$ID,
+            self::QUERY_STRING_REDIR_TYPE=>self::REDIRECT_SEARCH_ENGINE
+        );
+
+        // TODO: Status code ?
+        // header('HTTP/1.1 301 Moved Permanently') will cache it in the browser !!!
+
+        $url = wl($ID, $urlParams, true, '&');
+
+        send_redirect($url);
+
     }
 
 

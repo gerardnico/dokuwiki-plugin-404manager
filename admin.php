@@ -24,7 +24,8 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
     // Variable var and not public/private because php4 can't handle this kind of variable
 
     // The file path of the direct redirection (from an Page to a Page or URL)
-    var $pageRedirectionsFilePath = '';
+    private const PAGE_REDIRECTION_FILE_PATH = __DIR__ . "/404managerRedirect.conf";
+
     // The file path of the pattern redirection (from a Pattern)
     private $pagePatternRedirectionsFilePath;
 
@@ -43,6 +44,8 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
     private $sqlite;
 
 
+    const FORM_NAME_SOURCE_PAGE = 'SourcePage';
+    const FORM_NAME_TARGET_PAGE = 'TargetPage';
 
     function admin_plugin_404manager()
     {
@@ -61,12 +64,17 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
             msg($this->getLang('SqliteMandatory'), MANAGER404_MSG_INFO, $allow=MSG_MANAGERS_ONLY);
 
             //Set the redirection data
-            $this->pageRedirectionsFilePath = dirname(__FILE__) . '/404managerRedirect.conf';
-            if (@file_exists($this->pageRedirectionsFilePath)) {
-                $this->pageRedirections = unserialize(io_readFile($this->pageRedirectionsFilePath, false));
+            if (@file_exists(self::PAGE_REDIRECTION_FILE_PATH)) {
+                $this->pageRedirections = unserialize(io_readFile(self::PAGE_REDIRECTION_FILE_PATH, false));
             }
 
         } else {
+
+            // Migration of the old store
+            if (@file_exists(self::PAGE_REDIRECTION_FILE_PATH)) {
+                $pageRedirections = unserialize(io_readFile(self::PAGE_REDIRECTION_FILE_PATH, false));
+                
+            }
 
             // initialize the database connection
             $pluginName = $this->infoPlugin['base'];
@@ -120,8 +128,8 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
 
         if ($_POST['Add']) {
 
-            $this->redirectionSource = $_POST['Source'];
-            $this->redirectionTarget = $_POST['Target'];
+            $this->redirectionSource = $_POST[self::FORM_NAME_SOURCE_PAGE];
+            $this->redirectionTarget = $_POST[self::FORM_NAME_TARGET_PAGE];
             $this->redirectionType = $_POST['Type'];
 
             if ($this->redirectionSource == $this->redirectionTarget) {
@@ -230,8 +238,8 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
         ptln('</thead>');
 
         ptln('<tbody>');
-        ptln('		<tr><td><label for="add_sourcepage" >' . $this->lang['source_page'] . ': </label></td><td><input type="text" id="add_sourcepage" name="SourcePage" value="' . $this->redirectionSource . '" class="edit" /></td><td>' . $this->lang['source_page_info'] . '</td></td></tr>');
-        ptln('		<tr><td><label for="add_targetpage" >' . $this->lang['target_page'] . ': </label></td><td><input type="text" id="add_targetpage" name="TargetPage" value="' . $this->redirectionTarget . '" class="edit" /></td><td></td></tr>');
+        ptln('		<tr><td><label for="add_sourcepage" >' . $this->lang['source_page'] . ': </label></td><td><input type="text" id="add_sourcepage" name="'.self::FORM_NAME_SOURCE_PAGE.'" value="' . $this->redirectionSource . '" class="edit" /></td><td>' . $this->lang['source_page_info'] . '</td></td></tr>');
+        ptln('		<tr><td><label for="add_targetpage" >' . $this->lang['target_page'] . ': </label></td><td><input type="text" id="add_targetpage" name="'.self::FORM_NAME_TARGET_PAGE.'" value="' . $this->redirectionTarget . '" class="edit" /></td><td></td></tr>');
         ptln('		<tr><td><label for="add_valid" >' . $this->lang['redirection_valid'] . ': </label></td><td>' . $this->lang['yes'] . '</td><td>'.$this->lang['ExplicationValidateRedirection'] .'</td></tr>');
         ptln('		<tr>');
         ptln('			<td colspan="3">');
