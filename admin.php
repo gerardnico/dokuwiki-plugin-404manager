@@ -21,15 +21,21 @@ require_once(DOKU_INC . 'inc/parser/xhtml.php');
 class admin_plugin_404manager extends DokuWiki_Admin_Plugin
 {
 
+    // A static function to hold the 404 manager
+    private static $manager404 = null;
+
+
     // Variable var and not public/private because php4 can't handle this kind of variable
 
     // The file path of the direct redirection (from an Page to a Page or URL)
+    // No more used, replaced by a sqlite database
     private const PAGE_REDIRECTION_FILE_PATH = __DIR__ . "/404managerRedirect.conf";
+
+    // The redirection data in memory
+    var $pageRedirections = array();
 
     // The file path of the pattern redirection (from a Pattern)
     private $pagePatternRedirectionsFilePath;
-
-    var $pageRedirections = array();
     var $pagePatternRedirections = array();
 
     // Use to pass parameter between the handle and the html function to keep the form data
@@ -41,13 +47,19 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
     var $targetResourceType = 'Default';
     private $infoPlugin;
 
+    /** @var helper_plugin_sqlite $sqlite */
     private $sqlite;
 
 
     const FORM_NAME_SOURCE_PAGE = 'SourcePage';
     const FORM_NAME_TARGET_PAGE = 'TargetPage';
 
-    function admin_plugin_404manager()
+    /**
+     * admin_plugin_404manager constructor.
+     *
+     * Use the get function instead
+     */
+    private function __construct()
     {
 
         // enable direct access to language strings
@@ -57,7 +69,6 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
         $this->infoPlugin = $this->getInfo();
 
 
-        /** @var helper_plugin_sqlite $sqlite */
         $this->sqlite = plugin_load('helper', 'sqlite');
         if(!$this->sqlite){
 
@@ -73,7 +84,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
             // Migration of the old store
             if (@file_exists(self::PAGE_REDIRECTION_FILE_PATH)) {
                 $pageRedirections = unserialize(io_readFile(self::PAGE_REDIRECTION_FILE_PATH, false));
-                
+
             }
 
             // initialize the database connection
@@ -87,6 +98,14 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
         }
 
 
+    }
+
+    public static function get()
+    {
+        if (self::$manager404==null){
+            self::$manager404 = new admin_plugin_404manager();
+        }
+        return self::$manager404;
     }
 
 
@@ -363,11 +382,15 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
      */
     function isRedirectionPresent($sourcePageId)
     {
-        if (isset($this->pageRedirections[strtolower($sourcePageId)])) {
-            return 1;
-        } else {
-            return 0;
+        $sourcePageId = strtolower($sourcePageId);
+        if ($this->sqlite==null){
+            if (isset($this->pageRedirections[$sourcePageId])) {
+                return 1;
+            } else {
+                return 0;
+            }
         }
+
     }
 
     /**
@@ -383,7 +406,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
         $sourcePageId = strtolower($sourcePageId);
 
         if (isset($this->pageRedirections[$sourcePageId])) {
-            throw new Exception('Redirection for page (' + $sourcePageId + 'already exist');
+            throw new Exception('Redirection for page (' . $sourcePageId . 'already exist');
         }
 
         $this->pageRedirections[$sourcePageId]['TargetPage'] = $targetPageId;
@@ -447,11 +470,13 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
     /**
      * Get TargetPageType
      * @param    string $sourcePageId
+     * @return
      */
     function getTargetPageType($sourcePageId)
     {
         $sourcePageId = strtolower($sourcePageId);
         return $this->pageRedirections[$sourcePageId]['TargetPageType'];
+
     }
 
     /**
@@ -483,7 +508,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
      */
     function savePageRedirections()
     {
-        io_saveFile($this->pageRedirectionsFilePath, serialize($this->pageRedirections));
+        io_saveFile(self::PAGE_REDIRECTION_FILE_PATH, serialize($this->pageRedirections));
     }
 
     /**
@@ -519,7 +544,8 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
     }
 
     /**
-     * @return 1, 0 or false
+     * @param $inputExpression
+     * @return false|int 1|0
      * returns:
      *    - 1 if the input expression is a pattern,
      *    - 0 if not,

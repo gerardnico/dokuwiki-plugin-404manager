@@ -18,11 +18,11 @@ class manager_plugin_404manager_test extends DokuWikiTest
 
     /**
      * Test a redirect to an external Web Site
+     * @throws Exception
      */
     public function test_externalRedirect()
     {
-
-        $redirectManager = new admin_plugin_404manager();
+        $redirectManager = admin_plugin_404manager::get();
         if ($redirectManager->isRedirectionPresent(constant_parameters::$PAGE_REDIRECTED_TO_EXTERNAL_WEBSITE)) {
             $redirectManager->deleteRedirection(constant_parameters::$PAGE_REDIRECTED_TO_EXTERNAL_WEBSITE);
         }
@@ -35,6 +35,7 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $response = $request->execute();
 
         $locationHeader = $response->getHeader("Location");
+        /** @noinspection PhpUndefinedMethodInspection */
         $this->assertEquals("Location: ".$externalURL,$locationHeader,"The page was redirected");
 
 

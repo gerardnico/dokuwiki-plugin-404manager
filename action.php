@@ -106,7 +106,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         // it holds the function and methods
         require_once(dirname(__FILE__) . '/admin.php');
         if ($this->redirectManager == null) {
-            $this->redirectManager = new admin_plugin_404manager();
+            $this->redirectManager = admin_plugin_404manager::get();
         }
         // Event is also used in some sub-function, we make it them object scope
         $this->event = $event;
