@@ -14,11 +14,13 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
     var $sourceId = '';
 
     // The redirect source
-    const REDIRECT_SOURCE_REDIRECT = 'redirect';
+    const REDIRECT_SOURCE_ADMIN = 'adminConf';
     const REDIRECT_SOURCE_START_PAGE = 'startPage';
     const REDIRECT_SOURCE_BEST_PAGE_NAME = 'bestPageName';
     const REDIRECT_SOURCE_BEST_NAMESPACE = 'bestNamespace';
     const REDIRECT_SEARCH_ENGINE = 'searchEngine';
+
+    // The constant parameters
     const GO_TO_SEARCH_ENGINE = 'GoToSearchEngine';
     const GO_TO_BEST_NAMESPACE = 'GoToBestNamespace';
     const GO_TO_BEST_PAGE_NAME = 'GoToBestPageName';
@@ -147,7 +149,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         // If the page exist
         if (page_exists($targetPage)) {
 
-            $this->redirectToDokuwikiPage($targetPage, self::REDIRECT_SOURCE_REDIRECT);
+            $this->redirectToDokuwikiPage($targetPage, self::REDIRECT_SOURCE_ADMIN);
             return true;
 
         }
@@ -257,7 +259,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
 
             switch ($redirectSource) {
 
-                case self::REDIRECT_SOURCE_REDIRECT:
+                case self::REDIRECT_SOURCE_ADMIN:
                     // This is an internal ID
                     if ($this->redirectManager->getIsValidate($pageIdOrigin) == 'N') {
                         $this->message->addContent(sprintf($this->lang['message_redirected_by_redirect'], hsc($pageIdOrigin)));
@@ -621,7 +623,8 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
 
         global $ID;
 
-        $query = str_replace(':', ' ', $ID);
+        $replacementPart = array (':','_','-');
+        $query = str_replace($replacementPart, ' ', $ID);
 
         $urlParams = array(
             "do"=>"search",
