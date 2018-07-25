@@ -10,11 +10,14 @@ require_once(DOKU_PLUGIN . 'action.php');
 class action_plugin_404manager extends DokuWiki_Action_Plugin
 {
 
+
+
     var $targetId = '';
     var $sourceId = '';
 
     // The redirect source
-    const REDIRECT_SOURCE_ADMIN = 'adminConf';
+    const REDIRECT_TARGET_PAGE_FROM_META = 'dataStore';
+    const REDIRECT_EXTERNAL = 'External';
     const REDIRECT_SOURCE_START_PAGE = 'startPage';
     const REDIRECT_SOURCE_BEST_PAGE_NAME = 'bestPageName';
     const REDIRECT_SOURCE_BEST_NAMESPACE = 'bestNamespace';
@@ -25,6 +28,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
     const GO_TO_BEST_NAMESPACE = 'GoToBestNamespace';
     const GO_TO_BEST_PAGE_NAME = 'GoToBestPageName';
     const GO_TO_NS_START_PAGE = 'GoToNsStartPage';
+    const GO_TO_EDIT_MODE = 'GoToEditMode';
     const NOTHING = 'Nothing';
 
     /**
@@ -54,6 +58,8 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
 
     // Message
     private $message;
+
+
 
     function __construct()
     {
@@ -132,7 +138,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         // Their is one action for a writer:
         //   * edit mode direct
         // If the user is a writer (It have the right to edit).
-        If ($this->userCanWrite() && $this->getConf('GoToEditMode') == 1) {
+        If ($this->userCanWrite() && $this->getConf(self::GO_TO_EDIT_MODE) == 1) {
 
             $this->gotToEditMode($event);
             // Stop here
@@ -149,7 +155,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         // If the page exist
         if (page_exists($targetPage)) {
 
-            $this->redirectToDokuwikiPage($targetPage, self::REDIRECT_SOURCE_ADMIN);
+            $this->redirectToDokuwikiPage($targetPage, self::REDIRECT_TARGET_PAGE_FROM_META);
             return true;
 
         }
@@ -198,7 +204,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
                     list($bestPageId, $scorePageName) = $this->getBestPage($ID);
 
                     // Get Score from a Namespace
-                    list($bestNamespaceId, $namespaceScore) = $this->getBestNamespace($ID);
+                    list($bestNamespaceId, $namespaceScore) = $this->scoreBestNamespace($ID);
 
                     // Compare the two score
                     if ($scorePageName > 0 or $namespaceScore > 0) {
@@ -213,7 +219,9 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
 
                 case self::GO_TO_BEST_NAMESPACE:
 
-                    list($bestNamespaceId, $score) = explode(" ", $this->getBestNamespace($ID));
+                    $scoreNamespace = $this->scoreBestNamespace($ID);
+                    $bestNamespaceId = $scoreNamespace['namespace'];
+                    $score = $scoreNamespace['score'];
 
                     if ($score > 0) {
                         $this->redirectToDokuwikiPage($bestNamespaceId, self::REDIRECT_SOURCE_BEST_NAMESPACE);
@@ -306,7 +314,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
      * getBestNamespace
      * Return a list with 'BestNamespaceId Score'
      */
-    private function getBestNamespace($id)
+    private function scoreBestNamespace($id)
     {
 
         global $conf;
@@ -355,7 +363,10 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         }
 
 
-        return array($bestNamespaceId, $bestNamespaceScore);
+        return array(
+            'namespace'=>$bestNamespaceId,
+            'score'=> $bestNamespaceScore
+        );
 
     }
 
@@ -432,12 +443,13 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
             return;
         }
 
-        // Add or update the redirections
-        if ($this->redirectManager->isRedirectionPresent($ID)) {
-            $this->redirectManager->updateRedirectionMetaData($ID);
-        } else {
-            $this->redirectManager->addRedirection($ID, $targetPage);
-        }
+        // TODO: Create a cache table ? with the source, target and type of redirections ?
+        // if (!$this->redirectManager->isRedirectionPresent($ID)) {
+        //    $this->redirectManager->addRedirection($ID, $targetPage);
+        //}
+
+        // Redirection
+        $this->redirectManager->logRedirection($ID, $targetPage,$redirectSource);
 
         // Explode the page ID and the anchor (#)
         $link = explode('#', $targetPage, 2);
@@ -471,7 +483,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         // No message can be shown because this is an external URL
 
         // Update the redirections
-        $this->redirectManager->updateRedirectionMetaData($ID);
+        $this->redirectManager->logRedirection($ID, $url, self::REDIRECT_EXTERNAL);
 
         // TODO: Status code
         // header('HTTP/1.1 301 Moved Permanently');
