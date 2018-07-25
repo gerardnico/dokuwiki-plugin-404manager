@@ -11,7 +11,6 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
 {
 
 
-
     var $targetId = '';
     var $sourceId = '';
 
@@ -58,7 +57,6 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
 
     // Message
     private $message;
-
 
 
     function __construct()
@@ -201,10 +199,14 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
                     $bestPageId = null;
 
 
-                    list($bestPageId, $scorePageName) = $this->getBestPage($ID);
+                    $bestPage = $this->getBestPage($ID);
+                    $bestPageId = $bestPage['id'];
+                    $scorePageName = $bestPage['score'];
 
                     // Get Score from a Namespace
-                    list($bestNamespaceId, $namespaceScore) = $this->scoreBestNamespace($ID);
+                    $bestNamespace = $this->scoreBestNamespace($ID);
+                    $bestNamespaceId = $bestNamespace['namespace'];
+                    $namespaceScore = $bestNamespace['score'];
 
                     // Compare the two score
                     if ($scorePageName > 0 or $namespaceScore > 0) {
@@ -313,6 +315,8 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
     /**
      * getBestNamespace
      * Return a list with 'BestNamespaceId Score'
+     * @param $id
+     * @return array
      */
     private function scoreBestNamespace($id)
     {
@@ -364,8 +368,8 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
 
 
         return array(
-            'namespace'=>$bestNamespaceId,
-            'score'=> $bestNamespaceScore
+            'namespace' => $bestNamespaceId,
+            'score' => $bestNamespaceScore
         );
 
     }
@@ -449,22 +453,22 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         //}
 
         // Redirection
-        $this->redirectManager->logRedirection($ID, $targetPage,$redirectSource);
+        $this->redirectManager->logRedirection($ID, $targetPage, $redirectSource);
 
         // Explode the page ID and the anchor (#)
         $link = explode('#', $targetPage, 2);
 
         // Query String to pass the message
         $urlParams = array(
-            self::QUERY_STRING_ORIGIN_PAGE=>$ID,
-            self::QUERY_STRING_REDIR_TYPE=>$redirectSource
+            self::QUERY_STRING_ORIGIN_PAGE => $ID,
+            self::QUERY_STRING_REDIR_TYPE => $redirectSource
         );
 
         // TODO: Status code
         // header('HTTP/1.1 301 Moved Permanently') will cache it in the browser !!!
 
         $wl = wl($link[0], $urlParams, true, '&');
-        if ($link[1]){
+        if ($link[1]) {
             $wl .= '#' . rawurlencode($link[1]);
         }
         send_redirect($wl);
@@ -542,9 +546,14 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
 
             }
             $scorePageName = $this->getConf('WeightFactorForSamePageName') + ($bestNbWordFound - 1) * $this->getConf('WeightFactorForSameNamespace');
-            return array($bestPageId, $scorePageName);
+            return array(
+                'id' => $bestPageId,
+                'score' => $scorePageName);
         }
-        return array($bestPageId, $scorePageName);
+        return array(
+            'id' => $bestPageId,
+            'score' => $scorePageName
+        );
 
     }
 
@@ -580,7 +589,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
                     if ($i > 10) {
                         $this->message->addContent('<li>' .
                             tpl_link(
-                                "doku.php?id=".$pageId."&do=search&q=".rawurldecode($pageName),
+                                "doku.php?id=" . $pageId . "&do=search&q=" . rawurldecode($pageName),
                                 "More ...",
                                 'class="" rel="nofollow" title="More..."',
                                 $return = true
@@ -635,14 +644,14 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
 
         global $ID;
 
-        $replacementPart = array (':','_','-');
+        $replacementPart = array(':', '_', '-');
         $query = str_replace($replacementPart, ' ', $ID);
 
         $urlParams = array(
-            "do"=>"search",
-            "q"=> $query,
-            self::QUERY_STRING_ORIGIN_PAGE=>$ID,
-            self::QUERY_STRING_REDIR_TYPE=>self::REDIRECT_SEARCH_ENGINE
+            "do" => "search",
+            "q" => $query,
+            self::QUERY_STRING_ORIGIN_PAGE => $ID,
+            self::QUERY_STRING_REDIR_TYPE => self::REDIRECT_SEARCH_ENGINE
         );
 
         // TODO: Status code ?

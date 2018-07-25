@@ -1,10 +1,10 @@
 <?php
 /**
  * Integration Tests for the 404manager plugin through Dokuwiki Request
- * Each test is a redirect case
  *
  * @group plugin_404manager
  * @group plugins
+ *
  */
 require_once(__DIR__ . '/constant_parameters.php');
 require_once(__DIR__ . '/../action.php');
@@ -14,8 +14,6 @@ class manager_plugin_404manager_test extends DokuWikiTest
 
     // Needed otherwise the plugin is not enabled
     protected $pluginsEnabled = array('404manager','sqlite');
-
-
 
 
     /**
@@ -70,9 +68,13 @@ class manager_plugin_404manager_test extends DokuWikiTest
 
     /**
      * Test a redirect to the search engine
+     * @dataProvider providerDataStoreTypeData
+     * @param $dataStoreType
      */
-    public function test_internalRedirectToSearchEngine()
+    public function test_internalRedirectToSearchEngine($dataStoreType)
     {
+
+        admin_plugin_404manager::get()->setDataStoreType($dataStoreType);
 
         global $conf;
         $conf ['plugin'][constant_parameters::$PLUGIN_BASE]['ActionReaderFirst'] = action_plugin_404manager::GO_TO_SEARCH_ENGINE;
@@ -103,13 +105,15 @@ class manager_plugin_404manager_test extends DokuWikiTest
     /**
      * Test a redirect to an internal page that does not exist
      * Where a actionReaderFirst is search
+     * @dataProvider providerDataStoreTypeData
+     * @param $dataStoreType
      */
-    public function test_goToSearchEngineBasic()
+    public function test_goToSearchEngineBasic($dataStoreType)
     {
 
         $conf ['plugin'][constant_parameters::$PLUGIN_BASE]['ActionReaderFirst'] = action_plugin_404manager::GO_TO_SEARCH_ENGINE;
 
-        $redirectManager = admin_plugin_404manager::get();
+        $redirectManager = admin_plugin_404manager::get()->setDataStoreType($dataStoreType);
         if ($redirectManager->isRedirectionPresent(constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE)) {
             $redirectManager->deleteRedirection(constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE);
         }
@@ -139,12 +143,15 @@ class manager_plugin_404manager_test extends DokuWikiTest
 
     /**
      * Test a redirect to an internal page that exist
+     *
+     * @dataProvider providerDataStoreTypeData
+     * @param $dataStoreType
      */
-    public function test_internalRedirectToExistingPage()
+    public function test_internalRedirectToExistingPage($dataStoreType)
     {
 
 
-        $redirectManager = admin_plugin_404manager::get();
+        $redirectManager = admin_plugin_404manager::get()->setDataStoreType($dataStoreType);
         if ($redirectManager->isRedirectionPresent(constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE)) {
             $redirectManager->deleteRedirection(constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE);
         }
@@ -174,7 +181,7 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $this->assertEquals(constant_parameters::$EXPLICIT_REDIRECT_PAGE_TARGET, $queryKeys['id'], "The Id of the page is the target page");
 
         $this->assertEquals(constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE, $queryKeys[action_plugin_404manager::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
-        $this->assertEquals(action_plugin_404manager::REDIRECT_TARGET_PAGE_FROM_META, $queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE],  "The redirect type is known");
+        $this->assertEquals(action_plugin_404manager::REDIRECT_TARGET_PAGE_FROM_META, $queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
 
 
     }
@@ -184,7 +191,6 @@ class manager_plugin_404manager_test extends DokuWikiTest
      * with a relocation in the same branch
      * @dataProvider providerDataStoreTypeData
      * @param $dataStoreType
-     * @throws Exception
      */
     public function test_internalRedirectToBestNamePageSameBranch($dataStoreType)
     {
@@ -221,8 +227,8 @@ class manager_plugin_404manager_test extends DokuWikiTest
         parse_str($components['query'], $queryKeys);
         $this->assertNull($queryKeys['do'], "The page has no action than show");
         $this->assertEquals(constant_parameters::$REDIRECT_BEST_PAGE_NAME_TARGET_SAME_BRANCH, $queryKeys['id'], "The Id of the source page is the asked page");
-        $this->assertEquals(constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE, $queryKeys[action_plugin_404manager::QUERY_STRING_ORIGIN_PAGE],"The 404 id must be present");
-        $this->assertEquals(action_plugin_404manager::REDIRECT_SOURCE_BEST_PAGE_NAME,$queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE],  "The redirect type is known");
+        $this->assertEquals(constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE, $queryKeys[action_plugin_404manager::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
+        $this->assertEquals(action_plugin_404manager::REDIRECT_SOURCE_BEST_PAGE_NAME, $queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
 
 
     }
@@ -231,12 +237,14 @@ class manager_plugin_404manager_test extends DokuWikiTest
      * Test a redirect to an internal page that was chosen through BestNamePage
      * with a relocation to the same branch (the minimum target Id length)
      * even if there is another page with the same name in an other branch
+     * @dataProvider providerDataStoreTypeData
+     * @param $dataStoreType
      */
-    public function test_internalRedirectToBestNamePageOtherBranch()
+    public function test_internalRedirectToBestNamePageOtherBranch($dataStoreType)
     {
 
 
-        $redirectManager = admin_plugin_404manager::get();
+        $redirectManager = admin_plugin_404manager::get()->setDataStoreType($dataStoreType);
         if ($redirectManager->isRedirectionPresent(constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE)) {
             $redirectManager->deleteRedirection(constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE);
         }
@@ -268,10 +276,10 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $locationHeader = $response->getHeader("Location");
         $components = parse_url($locationHeader);
         parse_str($components['query'], $queryKeys);
-        /** @noinspection PhpUndefinedMethodInspection */
+
         $this->assertNull($queryKeys['do'], "The is only shown");
-        $this->assertEquals(constant_parameters::$REDIRECT_BEST_PAGE_NAME_TARGET_SAME_BRANCH, $queryKeys['id'],  "The Id of the source page is the asked page");
-        $this->assertEquals( constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE, $queryKeys[action_plugin_404manager::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
+        $this->assertEquals(constant_parameters::$REDIRECT_BEST_PAGE_NAME_TARGET_SAME_BRANCH, $queryKeys['id'], "The Id of the source page is the asked page");
+        $this->assertEquals(constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE, $queryKeys[action_plugin_404manager::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
         $this->assertEquals(action_plugin_404manager::REDIRECT_SOURCE_BEST_PAGE_NAME, $queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
 
 
@@ -280,13 +288,14 @@ class manager_plugin_404manager_test extends DokuWikiTest
     /**
      * Test a redirect to a namespace start page (that begins with start)
      * It must happens when a page exists within another namespace that is completely not related to the old one.
-     *
+     * @dataProvider providerDataStoreTypeData
+     * @param $dataStoreType
      */
-    public function test_internalRedirectToNamespaceStartPage()
+    public function test_internalRedirectToNamespaceStartPage($dataStoreType)
     {
 
 
-        $redirectManager = admin_plugin_404manager::get();
+        $redirectManager = admin_plugin_404manager::get()->setDataStoreType($dataStoreType);
         if ($redirectManager->isRedirectionPresent(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_SOURCE)) {
             $redirectManager->deleteRedirection(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_SOURCE);
         }
@@ -322,12 +331,12 @@ class manager_plugin_404manager_test extends DokuWikiTest
 
         // $REDIRECT_TO_NAMESPACE_START_PAGE_BAD_TARGET got a score of 9 (The base namespace 5 + same page name 4)
         // $REDIRECT_TO_NAMESPACE_START_PAGE_GOOD_TARGET got a score of 13 (The base namespace 5 + the same namspace 5 + start page 3)
-        $this->assertEquals(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_GOOD_TARGET, $queryKeys['id'],"The Id of the source page is the asked page");
+        $this->assertEquals(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_GOOD_TARGET, $queryKeys['id'], "The Id of the source page is the asked page");
         $this->assertNotEquals(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_BAD_TARGET, $queryKeys['id'], "The Id of the source page is the asked page");
 
         // 404 Params
         $this->assertEquals(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_SOURCE, $queryKeys[action_plugin_404manager::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
-        $this->assertEquals(action_plugin_404manager::REDIRECT_SOURCE_BEST_NAMESPACE, $queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE],"The redirect type is known");
+        $this->assertEquals(action_plugin_404manager::REDIRECT_SOURCE_BEST_NAMESPACE, $queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
 
 
     }
@@ -379,37 +388,42 @@ class manager_plugin_404manager_test extends DokuWikiTest
         parse_str($components['query'], $queryKeys);
         $this->assertNull($queryKeys['do'], "The page is only shown");
 
+        // 404manager:ns_branch2:redirect_to_namespace_start_page = score 9
+        // 404manager:ns_branch3:ns_branch3
         // $REDIRECT_TO_NAMESPACE_START_PAGE_BAD_TARGET got a score of 9 (The base namespace 5 + same page name 4)
-        // $REDIRECT_TO_NAMESPACE_START_PAGE_GOOD_TARGET got a score of 13 (The base namespace 5 + the same namspace 5 + start page 3)
+        // $REDIRECT_TO_NAMESPACE_START_PAGE_GOOD_TARGET got a score of 13 (The base namespace 5 + the same namespace 5 + start page 3)
         $this->assertEquals(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_GOOD_TARGET, $queryKeys['id'], "The Id is the target page");
         $this->assertNotEquals(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_BAD_TARGET, $queryKeys['id'], "The Id is not the source page");
 
         $this->assertEquals(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_SOURCE, $queryKeys[action_plugin_404manager::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
-        $this->assertEquals(action_plugin_404manager::REDIRECT_SOURCE_BEST_PAGE_NAME, $queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE],  "The redirect type is known");
+        $this->assertEquals(action_plugin_404manager::REDIRECT_SOURCE_BEST_PAGE_NAME, $queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
 
 
     }
 
     /**
-     * @throws Exception
+     * Sqlite test only
      */
     public function testRedirectionsOperations()
     {
         $targetPage = 'testRedirectionsOperations:test';
         saveWikiText($targetPage, 'Test ', 'but without any common name (namespace) in the path');
         idx_addPage($targetPage);
+        /** @var admin_plugin_404manager $redirectManager */
         $redirectManager = admin_plugin_404manager::get()
             ->setDataStoreType(admin_plugin_404manager::DATA_STORE_TYPE_SQLITE);
 
-        $redirectManager->deleteAllRedirections();
-        $count = $redirectManager->countRedirections();
-        $this->assertEquals(0, $count, "The number of redirection is zero");
-        $sourcePageId = "source";
-        $redirectManager->addRedirection($sourcePageId,$targetPage);
-        $count = $redirectManager->countRedirections();
-        $this->assertEquals(1, $count, "The number of redirection is one");
-        $bool = $redirectManager->isRedirectionPresent($sourcePageId);
-        $this->assertEquals(true, $bool, "The redirection is present");
+        if ($redirectManager->getDataStoreType() == admin_plugin_404manager::DATA_STORE_TYPE_SQLITE) {
+            $redirectManager->deleteAllRedirections();
+            $count = $redirectManager->countRedirections();
+            $this->assertEquals(0, $count, "The number of redirection is zero");
+            $sourcePageId = "source";
+            $redirectManager->addRedirection($sourcePageId, $targetPage);
+            $count = $redirectManager->countRedirections();
+            $this->assertEquals(1, $count, "The number of redirection is one");
+            $bool = $redirectManager->isRedirectionPresent($sourcePageId);
+            $this->assertEquals(true, $bool, "The redirection is present");
+        }
 
     }
 

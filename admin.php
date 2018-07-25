@@ -757,5 +757,13 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
         }
     }
 
+    public function getDataStoreType()
+    {
+        if ($this->dataStoreType == null) {
+            $this->initDataStore();
+        }
+        return $this->dataStoreType;
+    }
+
 
 }
