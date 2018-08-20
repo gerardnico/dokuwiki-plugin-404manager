@@ -41,7 +41,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
     // ###################################
     // The file path of the direct redirection (from an Page to a Page or URL)
     // No more used, replaced by a sqlite database
-    private const DATA_STORE_CONF_FILE_PATH = __DIR__ . "/404managerRedirect.conf";
+    const DATA_STORE_CONF_FILE_PATH = __DIR__ . "/404managerRedirect.conf";
     // The content of the conf file in memory
     var $pageRedirections = array();
 
