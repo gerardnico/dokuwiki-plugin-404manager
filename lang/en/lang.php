@@ -43,10 +43,10 @@ $lang['ExplicationValidateRedirection'] = 'A validate redirection don\'t show an
 $lang['ValidateToSuppressMessage'] = "You must approve (validate) the redirection to suppress the message of redirection.";
 
 // Forms Add/Modify Value
-$lang['source_page'] = 'Source Page <br>Or Pattern';
-$lang['source_page_info'] = 'The Qualified path of the Source Page (Ex: namespace:page) <br> or a php regular expression enclosed by forward slashes (Ex: /myPattern/[gmixXsuUAJ]?)';
-$lang['target_page'] = 'Target Page <br>Or Replacement expression';
-$lang['redirection_valid'] = 'Redirection Valid';
+$lang['source_page'] = 'Source Page';
+$lang['source_page_info'] = 'The full path of the Source Page (Ex: namespace:page)';
+$lang['target_page'] = 'Target Page';
+$lang['target_page_info'] = 'The full path of the Target Page (Ex: namespace:page) or an URL (https://gerardnico.com)';
 $lang['yes'] = 'Yes';
 $lang['Field'] = 'Field' ;
 $lang['Value'] = 'Value';

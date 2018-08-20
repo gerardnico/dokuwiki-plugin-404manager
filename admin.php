@@ -221,8 +221,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
 
         ptln('<tbody>');
         ptln('		<tr><td><label for="add_sourcepage" >' . $this->lang['source_page'] . ': </label></td><td><input type="text" id="add_sourcepage" name="' . self::FORM_NAME_SOURCE_PAGE . '" value="' . $this->redirectionSource . '" class="edit" /></td><td>' . $this->lang['source_page_info'] . '</td></td></tr>');
-        ptln('		<tr><td><label for="add_targetpage" >' . $this->lang['target_page'] . ': </label></td><td><input type="text" id="add_targetpage" name="' . self::FORM_NAME_TARGET_PAGE . '" value="' . $this->redirectionTarget . '" class="edit" /></td><td></td></tr>');
-        ptln('		<tr><td><label for="add_valid" >' . $this->lang['redirection_valid'] . ': </label></td><td>' . $this->lang['yes'] . '</td><td>' . $this->lang['ExplicationValidateRedirection'] . '</td></tr>');
+        ptln('		<tr><td><label for="add_targetpage" >' . $this->lang['target_page'] . ': </label></td><td><input type="text" id="add_targetpage" name="' . self::FORM_NAME_TARGET_PAGE . '" value="' . $this->redirectionTarget . '" class="edit" /></td><td>' . $this->lang['target_page_info'] . '</td></tr>');
         ptln('		<tr>');
         ptln('			<td colspan="3">');
         ptln('				<input type="hidden" name="do"    value="admin" />');
@@ -424,17 +423,30 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
 
         } else {
 
+            // Note the order is important
+            // because it's used in the bin of the update statement
             $entry = array(
-                'source' => $sourcePageId,
                 'target' => $targetPageId,
-                'CREATION_TIMESTAMP' => $this->currentDate
+                'creation_timestamp' => $this->currentDate,
+                'source' => $sourcePageId
             );
 
-            $res = $this->sqlite->storeEntry('redirections', $entry);
-            if (!$res) {
-                throw new RuntimeException("There was a problem during insertion");
+            $statement = 'select * from redirections where source = ?';
+            $res = $this->sqlite->query($statement,$sourcePageId);
+            $count = $this->sqlite->res2count($res);
+            if ($count<>1){
+                $res = $this->sqlite->storeEntry('redirections', $entry);
+                if (!$res) {
+                    throw new RuntimeException("There was a problem during insertion");
+                }
+            } else {
+                // Primary key constraint, the storeEntry function does not use an UPSERT
+                $statement = 'update redirections set target = ?, creation_timestamp = ? where source = ?';
+                $res = $this->sqlite->query($statement,$entry);
+                if (!$res) {
+                    throw new RuntimeException("There was a problem during the update");
+                }
             }
-
 
         }
     }
