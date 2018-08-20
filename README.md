@@ -41,6 +41,8 @@ Install the plugin using:
 
   * the [Plugin Manager](https://www.dokuwiki.org/plugin:plugin)
   * [manually](https://www.dokuwiki.org/plugin:Plugins) with the [download URL](http://github.com/gerardnico/dokuwiki-plugin-minimap/zipball/master), which points to latest version of the plugin.
+  
+on a server with minimal php 7.0
 
 ## Configuration settings
 

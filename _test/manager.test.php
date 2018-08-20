@@ -181,7 +181,7 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $this->assertEquals(constant_parameters::$EXPLICIT_REDIRECT_PAGE_TARGET, $queryKeys['id'], "The Id of the page is the target page");
 
         $this->assertEquals(constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE, $queryKeys[action_plugin_404manager::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
-        $this->assertEquals(action_plugin_404manager::REDIRECT_TARGET_PAGE_FROM_META, $queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
+        $this->assertEquals(action_plugin_404manager::REDIRECT_TARGET_PAGE_FROM_DATASTORE, $queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
 
 
     }

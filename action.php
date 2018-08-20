@@ -15,7 +15,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
     var $sourceId = '';
 
     // The redirect source
-    const REDIRECT_TARGET_PAGE_FROM_META = 'dataStore';
+    const REDIRECT_TARGET_PAGE_FROM_DATASTORE = 'dataStore';
     const REDIRECT_EXTERNAL = 'External';
     const REDIRECT_SOURCE_START_PAGE = 'startPage';
     const REDIRECT_SOURCE_BEST_PAGE_NAME = 'bestPageName';
@@ -153,7 +153,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         // If the page exist
         if (page_exists($targetPage)) {
 
-            $this->redirectToDokuwikiPage($targetPage, self::REDIRECT_TARGET_PAGE_FROM_META);
+            $this->redirectToDokuwikiPage($targetPage, self::REDIRECT_TARGET_PAGE_FROM_DATASTORE);
             return true;
 
         }
@@ -269,12 +269,9 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
 
             switch ($redirectSource) {
 
-                case self::REDIRECT_SOURCE_ADMIN:
-                    // This is an internal ID
-                    if ($this->redirectManager->getIsValidate($pageIdOrigin) == 'N') {
-                        $this->message->addContent(sprintf($this->lang['message_redirected_by_redirect'], hsc($pageIdOrigin)));
-                        $this->message->setType(Message404::TYPE_WARNING);
-                    };
+                case self::REDIRECT_TARGET_PAGE_FROM_DATASTORE:
+                    $this->message->addContent(sprintf($this->lang['message_redirected_by_redirect'], hsc($pageIdOrigin)));
+                    $this->message->setType(Message404::TYPE_CLASSIC);
                     break;
 
                 case self::REDIRECT_SOURCE_START_PAGE:
@@ -300,7 +297,10 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
             }
 
             // Add a list of page with the same name to the message
-            $this->addToMessagePagesWithSameName($pageIdOrigin);
+            // if the redirections is not planned
+            if ($redirectSource!=self::REDIRECT_TARGET_PAGE_FROM_DATASTORE) {
+                $this->addToMessagePagesWithSameName($pageIdOrigin);
+            }
 
         }
 
