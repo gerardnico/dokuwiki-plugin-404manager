@@ -331,7 +331,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
 
             $res = $this->sqlite->query('delete from redirections where source = ?', $sourcePageId);
             if (!$res) {
-                throw new RuntimeException("Something went wrong when deleting the redirections");
+                $this->throwRuntimeException("Something went wrong when deleting the redirections");
             }
 
         }
@@ -387,7 +387,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
         if ($this->dataStoreType == self::DATA_STORE_TYPE_CONF_FILE) {
 
             if (isset($this->pageRedirections[$sourcePageId])) {
-                throw new RuntimeException('Redirection for page (' . $sourcePageId . 'already exist');
+                $this->throwRuntimeException('Redirection for page (' . $sourcePageId . 'already exist');
             }
 
             $this->pageRedirections[$sourcePageId]['TargetPage'] = $targetPageId;
@@ -437,14 +437,14 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
             if ($count<>1){
                 $res = $this->sqlite->storeEntry('redirections', $entry);
                 if (!$res) {
-                    throw new RuntimeException("There was a problem during insertion");
+                    $this->throwRuntimeException("There was a problem during insertion");
                 }
             } else {
                 // Primary key constraint, the storeEntry function does not use an UPSERT
                 $statement = 'update redirections set target = ?, creation_timestamp = ? where source = ?';
                 $res = $this->sqlite->query($statement,$entry);
                 if (!$res) {
-                    throw new RuntimeException("There was a problem during the update");
+                    $this->throwRuntimeException("There was a problem during the update");
                 }
             }
 
@@ -469,7 +469,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
             $this->savePageRedirections();
         } else {
 
-            throw new RuntimeException('Not Yet implemented');
+            $this->throwRuntimeException('Not Yet implemented');
 
         }
     }
@@ -496,7 +496,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
             }
         } else {
 
-            throw new RuntimeException('Not Yet implemented');
+            $this->throwRuntimeException("Not Yet implemented");
 
         }
     }
@@ -788,6 +788,19 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
             return $this->pageRedirections;
 
         }
+    }
+
+    /**
+     * Dokuwiki will show a pink message when throwing an eexception
+     * and it's difficult to see from where it comes
+     *
+     * This utility function will add the plugin name to it
+     *
+     * @param $message
+     */
+    private function throwRuntimeException($message): void
+    {
+        throw new RuntimeException($this->getPluginName() . ' - '.$message);
     }
 
 
