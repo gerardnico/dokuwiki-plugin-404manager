@@ -5,6 +5,7 @@
   * Redirections are now real redirections passing variable via the query string
   * Sqlite has been added as database
   * The redirection data and the log are now separated
+  * Php must be minimal 7.1
 
 ## v1.1.0 (09-07-2016)
   * The page path is no more split by an underscore `_` for the best page name. This is to avoid that the algorithm will calculate a bigger score for a page in another namespace and before all, namespace are here to categorize pages. The plugin is based on same name page.
