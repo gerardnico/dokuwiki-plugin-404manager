@@ -370,11 +370,23 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
     }
 
     /**
-     * Add Redirection
-     * @param string $sourcePageId
-     * @param string $targetPageId
+     * @param $sourcePageId
+     * @param $targetPageId
      */
     function addRedirection($sourcePageId, $targetPageId)
+    {
+        $this->addRedirectionWithDate($sourcePageId, $targetPageId, $this->currentDate);
+    }
+
+    /**
+     * Add Redirection
+     * This function was needed to migrate the date of the file conf store
+     * You would use normally the function addRedirection
+     * @param string $sourcePageId
+     * @param string $targetPageId
+     * @param $creationDate
+     */
+    function addRedirectionWithDate($sourcePageId, $targetPageId, $creationDate)
     {
 
         // Lower page name is the dokuwiki Id
@@ -391,7 +403,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
             }
 
             $this->pageRedirections[$sourcePageId]['TargetPage'] = $targetPageId;
-            $this->pageRedirections[$sourcePageId]['CreationDate'] = $this->currentDate;
+            $this->pageRedirections[$sourcePageId]['CreationDate'] = $creationDate;
             // If the call come from the admin page and not from the process function
             if (substr_count($_SERVER['HTTP_REFERER'], 'admin.php')) {
 
@@ -404,7 +416,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
 
                 $this->pageRedirections[$sourcePageId]['IsValidate'] = 'N';
                 $this->pageRedirections[$sourcePageId]['CountOfRedirection'] = 1;
-                $this->pageRedirections[$sourcePageId]['LastRedirectionDate'] = $this->currentDate;
+                $this->pageRedirections[$sourcePageId]['LastRedirectionDate'] = $creationDate;
                 if ($_SERVER['HTTP_REFERER'] <> '') {
                     $this->pageRedirections[$sourcePageId]['LastReferrer'] = $_SERVER['HTTP_REFERER'];
                 } else {
@@ -427,14 +439,14 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
             // because it's used in the bin of the update statement
             $entry = array(
                 'target' => $targetPageId,
-                'creation_timestamp' => $this->currentDate,
+                'creation_timestamp' => $creationDate,
                 'source' => $sourcePageId
             );
 
             $statement = 'select * from redirections where source = ?';
-            $res = $this->sqlite->query($statement,$sourcePageId);
+            $res = $this->sqlite->query($statement, $sourcePageId);
             $count = $this->sqlite->res2count($res);
-            if ($count<>1){
+            if ($count <> 1) {
                 $res = $this->sqlite->storeEntry('redirections', $entry);
                 if (!$res) {
                     $this->throwRuntimeException("There was a problem during insertion");
@@ -442,7 +454,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
             } else {
                 // Primary key constraint, the storeEntry function does not use an UPSERT
                 $statement = 'update redirections set target = ?, creation_timestamp = ? where source = ?';
-                $res = $this->sqlite->query($statement,$entry);
+                $res = $this->sqlite->query($statement, $entry);
                 if (!$res) {
                     $this->throwRuntimeException("There was a problem during the update");
                 }
@@ -469,7 +481,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
             $this->savePageRedirections();
         } else {
 
-            $this->throwRuntimeException('Not Yet implemented');
+            $this->throwRuntimeException('Not implemented for a SQLite data store');
 
         }
     }
@@ -616,7 +628,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
 
         } else {
 
-            throw new RuntimeException('Not Yet implemented');
+            $this->throwRuntimeException('SavePageRedirections must no be called for a SQLite data store');
 
         }
     }
@@ -672,10 +684,17 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
      */
     private function initDataStore()
     {
-        $this->sqlite = plugin_load('helper', 'sqlite');
-        if (!$this->sqlite) {
 
-            $this->dataStoreType = self::DATA_STORE_TYPE_CONF_FILE;
+        if ($this->dataStoreType == null) {
+            $this->sqlite = plugin_load('helper', 'sqlite');
+            if (!$this->sqlite) {
+                $this->dataStoreType = self::DATA_STORE_TYPE_CONF_FILE;
+            } else {
+                $this->dataStoreType = self::DATA_STORE_TYPE_SQLITE;
+            }
+        }
+
+        if ($this->getDataStoreType() == self::DATA_STORE_TYPE_CONF_FILE) {
 
             msg($this->getLang('SqliteMandatory'), MANAGER404_MSG_INFO, $allow = MSG_MANAGERS_ONLY);
 
@@ -686,10 +705,14 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
 
         } else {
 
-            $this->dataStoreType = self::DATA_STORE_TYPE_SQLITE;
-
             // initialize the database connection
             $pluginName = $this->infoPlugin['base'];
+            if ($this->sqlite == null) {
+                $this->sqlite = plugin_load('helper', 'sqlite');
+                if (!$this->sqlite) {
+                    $this->throwRuntimeException("Unable to load the sqlite plugin");
+                }
+            }
             $init = $this->sqlite->init($pluginName, DOKU_PLUGIN . $pluginName . '/db/');
             if (!$init) {
                 msg($this->lang['SqliteUnableToInitialize'], MSG_MANAGERS_ONLY);
@@ -698,8 +721,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
 
             // Migration of the old store
             if (@file_exists(self::DATA_STORE_CONF_FILE_PATH)) {
-                $pageRedirections = unserialize(io_readFile(self::DATA_STORE_CONF_FILE_PATH, false));
-
+                $this->dataStoreMigration();
             }
 
 
@@ -721,12 +743,18 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
 
             $res = $this->sqlite->query("delete from redirections");
             if (!$res) {
-                throw new RuntimeException('Errors during delete of all redirections');
+                $this->throwRuntimeException('Errors during delete of all redirections');
             }
 
         } else {
 
-            throw new RuntimeException('Not Yet implemented');
+            if (file_exists(self::DATA_STORE_CONF_FILE_PATH)) {
+                $res = unlink(self::DATA_STORE_CONF_FILE_PATH);
+                if (!$res) {
+                    $this->throwRuntimeException('Unable to delete the file ' . self::DATA_STORE_TYPE_CONF_FILE);
+                }
+            }
+            $this->pageRedirections = array();
 
         }
     }
@@ -752,7 +780,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
 
         } else {
 
-            throw new RuntimeException('Not Yet implemented');
+            return count($this->pageRedirections);
 
         }
     }
@@ -800,7 +828,35 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
      */
     private function throwRuntimeException($message): void
     {
-        throw new RuntimeException($this->getPluginName() . ' - '.$message);
+        throw new RuntimeException($this->getPluginName() . ' - ' . $message);
+    }
+
+    /**
+     * Migrate from a conf file to sqlite
+     */
+    function dataStoreMigration()
+    {
+        if (!file_exists(self::DATA_STORE_CONF_FILE_PATH)) {
+            $this->throwRuntimeException("The file to migrate does not exist (" . self::DATA_STORE_CONF_FILE_PATH . ")");
+        }
+        // We cannot use the getRedirections method because this is a sqlite data store
+        // it will return nothing
+        $pageRedirections = unserialize(io_readFile(self::DATA_STORE_CONF_FILE_PATH, false));
+        foreach ($pageRedirections as $key => $row) {
+
+
+            $sourcePageId = $key;
+            $targetPageId = $row['TargetPage'];
+            $creationDate = $row['CreationDate'];
+            $isValidate = $row['IsValidate'];
+
+            if ($isValidate == 'Y') {
+                $this->addRedirectionWithDate($sourcePageId, $targetPageId, $creationDate);
+            }
+        }
+
+        rename(self::DATA_STORE_CONF_FILE_PATH, self::DATA_STORE_CONF_FILE_PATH . '.migrated');
+
     }
 
 

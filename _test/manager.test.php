@@ -13,7 +13,7 @@ class manager_plugin_404manager_test extends DokuWikiTest
 {
 
     // Needed otherwise the plugin is not enabled
-    protected $pluginsEnabled = array('404manager','sqlite');
+    protected $pluginsEnabled = array('404manager', 'sqlite');
 
 
     /**
@@ -22,7 +22,6 @@ class manager_plugin_404manager_test extends DokuWikiTest
      */
     public function providerDataStoreTypeData()
     {
-
         return array(
             array(null),
             array(admin_plugin_404manager::DATA_STORE_TYPE_CONF_FILE),
@@ -402,32 +401,81 @@ class manager_plugin_404manager_test extends DokuWikiTest
     }
 
     /**
-     * Sqlite test only
+     * Test basic redirections operations
+     *
+     * @dataProvider providerDataStoreTypeData
+     * @param $dataStoreType
      */
-    public function testRedirectionsOperations()
+    public function testRedirectionsOperations($dataStoreType)
     {
         $targetPage = 'testRedirectionsOperations:test';
         saveWikiText($targetPage, 'Test ', 'but without any common name (namespace) in the path');
         idx_addPage($targetPage);
         /** @var admin_plugin_404manager $redirectManager */
         $redirectManager = admin_plugin_404manager::get()
-            ->setDataStoreType(admin_plugin_404manager::DATA_STORE_TYPE_SQLITE);
+            ->setDataStoreType($dataStoreType);
 
-        if ($redirectManager->getDataStoreType() == admin_plugin_404manager::DATA_STORE_TYPE_SQLITE) {
-            $redirectManager->deleteAllRedirections();
-            $count = $redirectManager->countRedirections();
-            $this->assertEquals(0, $count, "The number of redirection is zero");
-            $sourcePageId = "source";
-            $redirectManager->addRedirection($sourcePageId, $targetPage);
-            $count = $redirectManager->countRedirections();
-            $this->assertEquals(1, $count, "The number of redirection is one");
-            $bool = $redirectManager->isRedirectionPresent($sourcePageId);
-            $this->assertEquals(true, $bool, "The redirection is present");
-        }
+
+        $redirectManager->deleteAllRedirections();
+        $count = $redirectManager->countRedirections();
+        $this->assertEquals(0, $count, "The number of redirection is zero");
+        $sourcePageId = "source";
+        $redirectManager->addRedirection($sourcePageId, $targetPage);
+        $count = $redirectManager->countRedirections();
+        $this->assertEquals(1, $count, "The number of redirection is one");
+        $bool = $redirectManager->isRedirectionPresent($sourcePageId);
+        $this->assertEquals(true, $bool, "The redirection is present");
+
 
     }
 
 
+    /**
+     * Test the migration of a data store from file to Sqlite
+     */
+    public function testMigrateDataStore()
+    {
+
+        $targetPage = 'testMigrateDataStore:test';
+        saveWikiText($targetPage, 'Test ', 'test summary');
+        idx_addPage($targetPage);
+
+        // Cleaning
+        /** @var admin_plugin_404manager $redirectManager */
+        $redirectManager = admin_plugin_404manager::get()
+            ->setDataStoreType(admin_plugin_404manager::DATA_STORE_TYPE_SQLITE);
+        $redirectManager->deleteAllRedirections();
+        $filenameMigrated = admin_plugin_404manager::DATA_STORE_CONF_FILE_PATH . '.migrated';
+        if (file_exists($filenameMigrated)){
+            unlink($filenameMigrated);
+        }
+
+        // Create a conf file
+        $redirectManager->setDataStoreType(admin_plugin_404manager::DATA_STORE_TYPE_CONF_FILE);
+        $redirectManager->deleteAllRedirections();
+        $sourcePageIdValidated = "doesNotExistValidateRedirections";
+        $redirectManager->addRedirection($sourcePageIdValidated, $targetPage);
+        $redirectManager->validateRedirection($sourcePageIdValidated);
+        $sourcePageIdNotValidated = "doesNotExistNotValidateRedirections";
+        $redirectManager->addRedirection($sourcePageIdNotValidated, $targetPage);
+
+        $count = $redirectManager->countRedirections();
+        $this->assertEquals(2, $count, "The number of redirection is 2 in the conf file");
+
+        $this->assertEquals(true, file_exists(admin_plugin_404manager::DATA_STORE_CONF_FILE_PATH), "The file was created");
+
+        // Settings the store will trigger the migration
+        $redirectManager->setDataStoreType(admin_plugin_404manager::DATA_STORE_TYPE_SQLITE);
+
+        $count = $redirectManager->countRedirections();
+        $this->assertEquals(1, $count, "The number of redirection is 1");
+
+        $this->assertEquals(false, file_exists(admin_plugin_404manager::DATA_STORE_CONF_FILE_PATH), "The file does not exist anymore");
+        $this->assertEquals(true, file_exists($filenameMigrated), "The file migrated exist");
+
+
+
+    }
 
 
 }
