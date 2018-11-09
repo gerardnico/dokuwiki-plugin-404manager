@@ -43,10 +43,10 @@ $lang['ExplicationValidateRedirection'] = 'A validate redirection don\'t show an
 $lang['ValidateToSuppressMessage'] = "You must approve (validate) the redirection to suppress the message of redirection.";
 
 // Forms Add/Modify Value
-$lang['source_page'] = 'Source Page <br>Or Pattern';
-$lang['source_page_info'] = 'The Qualified path of the Source Page (Ex: namespace:page) <br> or a php regular expression enclosed by forward slashes (Ex: /myPattern/[gmixXsuUAJ]?)';
-$lang['target_page'] = 'Target Page <br>Or Replacement expression';
-$lang['redirection_valid'] = 'Redirection Valid';
+$lang['source_page'] = 'Source Page';
+$lang['source_page_info'] = 'The full path of the Source Page (Ex: namespace:page)';
+$lang['target_page'] = 'Target Page';
+$lang['target_page_info'] = 'The full path of the Target Page (Ex: namespace:page) or an URL (https://gerardnico.com)';
 $lang['yes'] = 'Yes';
 $lang['Field'] = 'Field' ;
 $lang['Value'] = 'Value';
@@ -64,7 +64,7 @@ $lang['message_redirected_to_startpage'] = 'The page (%s) doesn\'t exist. You ha
 $lang['message_redirected_to_bestpagename'] = 'The page (%s) doesn\'t exist. You have been redirected automatically to the best page.';
 $lang['message_redirected_to_bestnamespace'] = 'The page (%s) doesn\'t exist. You have been redirected automatically to the best namespace.';
 $lang['message_redirected_to_searchengine'] = 'The page (%s) doesn\'t exist. You have been redirected automatically to the search engine.';
-$lang['message_come_from'] = 'This message was fired by ';
+$lang['message_come_from'] = 'This message was fired by the ';
 
 $lang['SqliteMandatory'] = 'The <a href="https://www.dokuwiki.org/plugin:404manager">404 Manager plugin</a> uses the <a href="https://www.dokuwiki.org/plugin:sqlite">sqlite plugin</a> for all new functions above the version <a href="https://github.com/gerardnico/dokuwiki-plugin-404manager/blob/master/CHANGES.md#v110-09-07-2016">v1.1.0 (09-07-2016)</a>. You need do install it if you want to use them. See the <a href="https://github.com/gerardnico/dokuwiki-plugin-404manager/blob/master/CHANGES.md#v110-09-07-2016">changes file</a> for the list of new functionalities.';
 

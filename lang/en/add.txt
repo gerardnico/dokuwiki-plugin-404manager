@@ -1,4 +1,5 @@
-Use the following format for the target Page :
-^ Target Page Type ^ Example ^
+\\
+Example of value for the page :
+^ Page Type ^ Example ^
 | Internal Wiki Page | - namespace:internalpagename \\  - namespace_first:namespace_second:internalpagename |
-| External Website | - <nowiki>http://www.example.com/mypage</nowiki> \\ - <nowiki>http://www.example.com</nowiki> |
+| External Website (Target page only) | - https://gerardnico.com/404managerplugin \\ - http://www.example.com |

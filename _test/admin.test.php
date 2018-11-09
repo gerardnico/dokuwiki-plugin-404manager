@@ -26,17 +26,18 @@ class admin_plugin_404manager_test extends DokuWikiTest
         // Not an expression
         $inputExpression = "Hallo";
         $isRegularExpression = admin_plugin_404manager::isRegularExpression($inputExpression);
-        $this->assertEquals(false,$isRegularExpression,"The term ("+$inputExpression+") is not a regular expression");
+        /** @noinspection PhpUndefinedMethodInspection */
+        $this->assertEquals(0,$isRegularExpression,"The term (".$inputExpression.") is not a regular expression");
 
         // A basic expression
         $inputExpression = "/Hallo/";
         $isRegularExpression = admin_plugin_404manager::isRegularExpression($inputExpression);
-        $this->assertEquals(true,$isRegularExpression,"The term ("+$inputExpression+") is a regular expression");
+        $this->assertEquals(true,$isRegularExpression,"The term (".$inputExpression.") is a regular expression");
 
         // A complicated expression
         $inputExpression = "/(/path1/path2/)(.*)/";
         $isRegularExpression = admin_plugin_404manager::isRegularExpression($inputExpression);
-        $this->assertEquals(true,$isRegularExpression,"The term ("+$inputExpression+") is a regular expression");
+        $this->assertEquals(true,$isRegularExpression,"The term (" . $inputExpression . ") is a regular expression");
 
     }
 

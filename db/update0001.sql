@@ -1,15 +1,33 @@
-CREATE TABLE REDIRECTION_PAGE (
-    -- Redirection from a page id to a target page id
-    SOURCE       TEXT CONSTRAINT REDIRECTION_PK PRIMARY KEY, -- A source page or a regular expression pattern
-    TARGET       TEXT, -- A target page of a target pattern substitution
-    IS_VALID     BOOLEAN DEFAULT FALSE -- apply only for page redirection and valid it
+-- Redirection from a page id to a target page id
+-- saved by the user in the admin page
+CREATE TABLE REDIRECTIONS (
+  SOURCE                TEXT CONSTRAINT REDIRECTION_PK PRIMARY KEY, -- Source page id
+  TARGET                TEXT, -- Target Page id,
+  CREATION_TIMESTAMP    TIMESTAMP -- Timestamp creation
 );
 
-CREATE TABLE REDIRECTION_PATTERN (
-    -- Will apply a regular expression pattern
-    PATTERN       TEXT CONSTRAINT REDIRECTION_PATTERN_PK PRIMARY KEY, -- A source page or a regular expression pattern
-    SUBSTITUION   TEXT, -- Pattern substitution
-    ORDER         NUMERIC DEFAULT 0, -- The order in which the substitution must be applied
-    APPLY_ALWAYS  BOOLEAN DEFAULT FALSE -- Apply only for pattern substitution (if yes, the substitution will always been applied before searching a page redirection)
+-- Log of the redirections
+CREATE TABLE REDIRECTIONS_LOG (
+  TIMESTAMP    TIMESTAMP,
+  SOURCE       TEXT,
+  TARGET       TEXT,
+  TYPE         TEXT, -- which algorithm or manual entry
+  REFERRER     TEXT
 );
+
+
+-- Table redirection cache
+-- This table can be make empty
+-- NOT yet implemented.
+-- Was kept to show that that the type of redirections is needed
+-- as it seems that the engine goes two times through the php page (bug ??)
+--
+-- CREATE TABLE REDIRECTION_CACHE (
+--  SOURCE       TEXT CONSTRAINT REDIRECTION_PK PRIMARY KEY, -- Source page id
+--  TARGET       TEXT, -- target page id
+--  TYPE         TEXT -- The algo
+-- );
+
+
+
 

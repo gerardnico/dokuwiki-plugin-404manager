@@ -16,7 +16,7 @@ in order to move page around. The most important problem is that thus external l
 
 ## What can this plugin do ?
 
-###For writers
+### For writers
   * Automatic redirection in edit mode
   * A message is shown when the page name already exist in other pages.
 
@@ -41,6 +41,8 @@ Install the plugin using:
 
   * the [Plugin Manager](https://www.dokuwiki.org/plugin:plugin)
   * [manually](https://www.dokuwiki.org/plugin:Plugins) with the [download URL](http://github.com/gerardnico/dokuwiki-plugin-minimap/zipball/master), which points to latest version of the plugin.
+  
+on a server with minimal php 7.1
 
 ## Configuration settings
 
@@ -70,19 +72,7 @@ You will see the admin page for the 404 Manager Plugin. This page allow you to s
 Action, you can perform :
   * Add/Modify a redirect with the form Add/Modify
   * Delete a redirect with the picture "delete"
-  * Validate the redirect with the picture validate in the column "Valid".
 
-**Why I must validate a redirection ?**
-
-When a redirection occurs, the 404manager plugin insert automatically the redirection in this list.
-
-In this way :
-  * You can see thus which redirect occurs, when, where and how many time.
-  * The 404manager plugin uses it as a cache. If the same page is asked, it can retrieve easily the target page.
-
-To be sure that the reader is not totally lost because he asks for one page and he have an other page, the 404 manager plugin fired a message. If you validate the redirection, this message disappears.
-
-This action is always performed first in the process of redirection for a reader.
 
 ### Redirection by best name page
 
@@ -132,6 +122,15 @@ The query performed is an explode of the page asked.
   * The page asked : namespace1:namespace2:pre_pagename
   * The query asked : namespace1+namespace2+pre+pagename
 
+
+## Data Store
+
+You can find the meta data:
+  * for the last version: in the Sqlite Database DOKUWIKI_HOME/data/meta/404manager.sqlite3
+  * for the older version: in the file 404managerRedirect.conf or 404managerRedirect.conf.migrated in the directory DOKUWIKI_HOME\lib\plugins\404manager
+
+With the SQLite plugin, the data can be queried directly through its admin page.
+  
 ## Language
 The plugin is only translated in English but you can translate it in your own language.
 

@@ -4,7 +4,7 @@ if (!defined('DOKU_INC')) die();
 
 if (!defined('DOKU_PLUGIN')) define('DOKU_PLUGIN', DOKU_INC . 'lib/plugins/');
 
-// Surpriselly their is not constant for the info level
+// Surprisingly there is no constant for the info level
 if (!defined('MANAGER404_MSG_ERROR')) define('MANAGER404_MSG_ERROR', -1);
 if (!defined('MANAGER404_MSG_INFO')) define('MANAGER404_MSG_INFO', 0);
 if (!defined('MANAGER404_MSG_SUCCESS')) define('MANAGER404_MSG_SUCCESS', 1);
@@ -21,62 +21,78 @@ require_once(DOKU_INC . 'inc/parser/xhtml.php');
 class admin_plugin_404manager extends DokuWiki_Admin_Plugin
 {
 
+    // A static function to hold the 404 manager
+    private static $manager404 = null;
+
+    // Data Store Type
+    // The Data Store Type variable
+    private $dataStoreType;
+
+    // The Data Store Type possible value
+    const DATA_STORE_TYPE_CONF_FILE = 'confFile';
+    const DATA_STORE_TYPE_SQLITE = 'sqlite';
+
+
     // Variable var and not public/private because php4 can't handle this kind of variable
 
+    // ###################################
+    // Data Stored in a conf file
+    // Deprecated
+    // ###################################
     // The file path of the direct redirection (from an Page to a Page or URL)
-    var $pageRedirectionsFilePath = '';
-    // The file path of the pattern redirection (from a Pattern)
-    private $pagePatternRedirectionsFilePath;
-
+    // No more used, replaced by a sqlite database
+    const DATA_STORE_CONF_FILE_PATH = __DIR__ . "/404managerRedirect.conf";
+    // The content of the conf file in memory
     var $pageRedirections = array();
-    var $pagePatternRedirections = array();
+
 
     // Use to pass parameter between the handle and the html function to keep the form data
     var $redirectionSource = '';
     var $redirectionTarget = '';
-    private $redirectionType;
     var $currentDate = '';
+    // Deprecated
+    private $redirectionType;
+    // Deprecated
     var $isValidate = '';
+    // Deprecated
     var $targetResourceType = 'Default';
+
     private $infoPlugin;
 
+    /** @var helper_plugin_sqlite $sqlite */
     private $sqlite;
 
+    // Name of the variable in the HTML form
+    const FORM_NAME_SOURCE_PAGE = 'SourcePage';
+    const FORM_NAME_TARGET_PAGE = 'TargetPage';
 
 
-    function admin_plugin_404manager()
+    /**
+     * admin_plugin_404manager constructor.
+     *
+     * Use the get function instead
+     */
+    public function __construct()
     {
 
         // enable direct access to language strings
         // of use of $this->getLang
         $this->setupLocale();
-        $this->currentDate = date("d/m/Y");
+        $this->currentDate = date("c");
         $this->infoPlugin = $this->getInfo();
 
 
-        /** @var helper_plugin_sqlite $sqlite */
-        $this->sqlite = plugin_load('helper', 'sqlite');
-        if(!$this->sqlite){
+    }
 
-            msg($this->getLang('SqliteMandatory'), MANAGER404_MSG_INFO, $allow=MSG_MANAGERS_ONLY);
-
-            //Set the redirection data
-            $this->pageRedirectionsFilePath = dirname(__FILE__) . '/404managerRedirect.conf';
-            if (@file_exists($this->pageRedirectionsFilePath)) {
-                $this->pageRedirections = unserialize(io_readFile($this->pageRedirectionsFilePath, false));
-            }
-
-        } else {
-
-            // initialize the database connection
-            if(!$this->sqlite->init($this->infoPlugin['base'],DOKU_PLUGIN.$this->infoPlugin['base'].'/db/')){
-                msg($this->lang['SqliteUnableToInitialize'], MSG_MANAGERS_ONLY);
-                return;
-            }
-
+    /**
+     * @return admin_plugin_404manager
+     */
+    public static function get()
+    {
+        if (self::$manager404 == null) {
+            self::$manager404 = new admin_plugin_404manager();
         }
-
-
+        return self::$manager404;
     }
 
 
@@ -118,30 +134,12 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
 
         if ($_POST['Add']) {
 
-            $this->redirectionSource = $_POST['Source'];
-            $this->redirectionTarget = $_POST['Target'];
-            $this->redirectionType = $_POST['Type'];
+            $this->redirectionSource = $_POST[self::FORM_NAME_SOURCE_PAGE];
+            $this->redirectionTarget = $_POST[self::FORM_NAME_TARGET_PAGE];
 
             if ($this->redirectionSource == $this->redirectionTarget) {
                 msg($this->lang['SameSourceAndTargetAndPage'] . ': ' . $this->redirectionSource . '', -1);
                 return;
-            }
-
-            // Is this a regular expression pattern ?
-            if ($this->redirectionType == 'Pattern') {
-
-                $matches = self::isRegularExpression($this->redirectionSource);
-                if ($matches) {
-
-                    $pattern = $this->redirectionSource;
-                    $substitution = $this->redirectionTarget;
-                    $applyAlwaysSubstitution = $_POST['ApplyAlwaysSubstitution'];
-                    $this->addPatternRedirection($pattern, $substitution, $applyAlwaysSubstitution);
-                    msg($this->lang['Saved'], MSG_MANAGERS_ONLY);
-                    return;
-
-                }
-
             }
 
 
@@ -185,18 +183,12 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
             }
 
 
-
         }
 
         if ($_POST['Delete']) {
 
             $redirectionId = $_POST['SourcePage'];
-            $redirectionType = $_POST['RedirectionType'];
-            if ($redirectionType=='pattern') {
-                $this->deletePatternRedirection($redirectionId);
-            } else {
-                $this->deleteRedirection($redirectionId);
-            }
+            $this->deleteRedirection($redirectionId);
             msg($this->lang['Deleted'], 1);
 
         }
@@ -228,14 +220,13 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
         ptln('</thead>');
 
         ptln('<tbody>');
-        ptln('		<tr><td><label for="add_sourcepage" >' . $this->lang['source_page'] . ': </label></td><td><input type="text" id="add_sourcepage" name="SourcePage" value="' . $this->redirectionSource . '" class="edit" /></td><td>' . $this->lang['source_page_info'] . '</td></td></tr>');
-        ptln('		<tr><td><label for="add_targetpage" >' . $this->lang['target_page'] . ': </label></td><td><input type="text" id="add_targetpage" name="TargetPage" value="' . $this->redirectionTarget . '" class="edit" /></td><td></td></tr>');
-        ptln('		<tr><td><label for="add_valid" >' . $this->lang['redirection_valid'] . ': </label></td><td>' . $this->lang['yes'] . '</td><td>'.$this->lang['ExplicationValidateRedirection'] .'</td></tr>');
+        ptln('		<tr><td><label for="add_sourcepage" >' . $this->lang['source_page'] . ': </label></td><td><input type="text" id="add_sourcepage" name="' . self::FORM_NAME_SOURCE_PAGE . '" value="' . $this->redirectionSource . '" class="edit" /></td><td>' . $this->lang['source_page_info'] . '</td></td></tr>');
+        ptln('		<tr><td><label for="add_targetpage" >' . $this->lang['target_page'] . ': </label></td><td><input type="text" id="add_targetpage" name="' . self::FORM_NAME_TARGET_PAGE . '" value="' . $this->redirectionTarget . '" class="edit" /></td><td>' . $this->lang['target_page_info'] . '</td></tr>');
         ptln('		<tr>');
         ptln('			<td colspan="3">');
         ptln('				<input type="hidden" name="do"    value="admin" />');
         ptln('				<input type="hidden" name="page"  value="404manager" />');
-        ptln('				<input type="submit" name="Add" class="button" value="'.$this->lang['btn_addmodify'].'" />');
+        ptln('				<input type="submit" name="Add" class="button" value="' . $this->lang['btn_addmodify'] . '" />');
         ptln('			</td>');
         ptln('		</tr>');
         ptln('</tbody>');
@@ -259,23 +250,29 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
         ptln('			<th>&nbsp;</th>');
         ptln('			<th>' . $this->lang['SourcePage'] . '</th>');
         ptln('			<th>' . $this->lang['TargetPage'] . '</th>');
-        ptln('			<th>' . $this->lang['TargetPageType'] . '</th>');
-        ptln('			<th>' . $this->lang['Valid'] . '</th>');
         ptln('			<th>' . $this->lang['CreationDate'] . '</th>');
-        ptln('			<th>' . $this->lang['LastRedirectionDate'] . '</th>');
-        ptln('			<th>' . $this->lang['LastReferrer'] . '</th>');
-        ptln('			<th>' . $this->lang['CountOfRedirection'] . '</th>');
         ptln('	    </tr>');
         ptln('	</thead>');
 
         ptln('	<tbody>');
-        foreach ($this->pageRedirections as $sourcePageId => $Vl_Attributes) {
 
+
+        foreach ($this->getRedirections() as $key => $row) {
+
+            if ($this->dataStoreType == self::DATA_STORE_TYPE_SQLITE) {
+                $sourcePageId = $row['SOURCE'];
+                $targetPageId = $row['TARGET'];
+                $creationDate = $row['CREATION_TIMESTAMP'];
+            } else {
+                $sourcePageId = $key;
+                $targetPageId = $row['TargetPage'];
+                $creationDate = $row['CreationDate'];
+            }
             $title = false;
             if ($conf['useheading']) {
-                $title = p_get_first_heading($Vl_Attributes['TargetPage']);
+                $title = p_get_first_heading($targetPageId);
             }
-            if (!$title) $title = $Vl_Attributes['TargetPage'];
+            if (!$title) $title = $targetPageId;
 
 
             ptln('	  <tr class="redirect_info">');
@@ -291,35 +288,15 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
             tpl_link(wl($sourcePageId), $this->truncateString($sourcePageId, 30), 'title="' . $sourcePageId . '" class="wikilink2" rel="nofollow"');
             ptln('		</td>');
             print '		<td>';
-            tpl_link(wl($Vl_Attributes['TargetPage']), $this->truncateString($Vl_Attributes['TargetPage'], 30), 'title="' . hsc($title) . ' (' . $Vl_Attributes['TargetPage'] . ')"');
+            tpl_link(wl($targetPageId), $this->truncateString($targetPageId, 30), 'title="' . hsc($title) . ' (' . $targetPageId . ')"');
             ptln('		</td>');
-            ptln('		<td>' . $Vl_Attributes['TargetPageType'] . '</td>');
-            if ($Vl_Attributes['IsValidate'] == 'N') {
-                ptln('		<td><form action="" method="post">');
-                ptln('				<input type="image" src="' . DOKU_BASE . 'lib/plugins/404manager/images/validate.jpg" name="validate" title="' . $this->lang['ValidateToSuppressMessage'] . '" alt="Validate" />');
-                ptln('				<input type="hidden" name="Validate"  value="Yes" />');
-                ptln('				<input type="hidden" name="SourcePage"  value="' . $sourcePageId . '" />');
-                ptln('		</form></td>');
-            } else {
-                ptln('		<td>Yes</td>');
-            }
-            ptln('		<td>' . $Vl_Attributes['CreationDate'] . '</td>');
-            ptln('		<td>' . $Vl_Attributes['LastRedirectionDate'] . '</td>');
-            if ($this->isValidURL($Vl_Attributes['LastReferrer'])) {
-                print('	<td>');
-                tpl_link($Vl_Attributes['LastReferrer'], $this->truncateString($Vl_Attributes['LastReferrer'], 30), 'title="' . $Vl_Attributes['LastReferrer'] . '" class="urlextern" rel="nofollow"');
-                print('	</td>');
-            } else {
-                ptln('		<td>' . $Vl_Attributes['LastReferrer'] . '</td>');
-            }
-            ptln('		<td>' . $Vl_Attributes['CountOfRedirection'] . '</td>');
+            ptln('		<td>' . $creationDate . '</td>');
             ptln('    </tr>');
         }
         ptln('  </tbody>');
         ptln('</table>');
         ptln('</div>'); //End Table responsive
         ptln('</div>'); // End level 2
-
 
 
     }
@@ -342,8 +319,23 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
      */
     function deleteRedirection($sourcePageId)
     {
-        unset($this->pageRedirections[strtolower($sourcePageId)]);
-        $this->savePageRedirections();
+
+        if ($this->dataStoreType == null) {
+            $this->initDataStore();
+        }
+
+        if ($this->dataStoreType == self::DATA_STORE_TYPE_CONF_FILE) {
+            unset($this->pageRedirections[strtolower($sourcePageId)]);
+            $this->savePageRedirections();
+        } else {
+
+            $res = $this->sqlite->query('delete from redirections where source = ?', $sourcePageId);
+            if (!$res) {
+                $this->throwRuntimeException("Something went wrong when deleting the redirections");
+            }
+
+        }
+
     }
 
     /**
@@ -353,59 +345,122 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
      */
     function isRedirectionPresent($sourcePageId)
     {
-        if (isset($this->pageRedirections[strtolower($sourcePageId)])) {
-            return 1;
-        } else {
-            return 0;
+        $sourcePageId = strtolower($sourcePageId);
+
+        if ($this->dataStoreType == null) {
+            $this->initDataStore();
         }
+
+        if ($this->dataStoreType == self::DATA_STORE_TYPE_CONF_FILE) {
+
+            if (isset($this->pageRedirections[$sourcePageId])) {
+                return 1;
+            } else {
+                return 0;
+            }
+
+        } else {
+
+            $res = $this->sqlite->query("SELECT * FROM redirections");
+            $count = $this->sqlite->res2count($res);
+            return $count;
+
+        }
+
+    }
+
+    /**
+     * @param $sourcePageId
+     * @param $targetPageId
+     */
+    function addRedirection($sourcePageId, $targetPageId)
+    {
+        $this->addRedirectionWithDate($sourcePageId, $targetPageId, $this->currentDate);
     }
 
     /**
      * Add Redirection
+     * This function was needed to migrate the date of the file conf store
+     * You would use normally the function addRedirection
      * @param string $sourcePageId
      * @param string $targetPageId
-     * @throws Exception if the redirection already exist
+     * @param $creationDate
      */
-    function addRedirection($sourcePageId, $targetPageId)
+    function addRedirectionWithDate($sourcePageId, $targetPageId, $creationDate)
     {
 
         // Lower page name is the dokuwiki Id
         $sourcePageId = strtolower($sourcePageId);
 
-        if (isset($this->pageRedirections[$sourcePageId])) {
-            throw new Exception('Redirection for page (' + $sourcePageId + 'already exist');
+        if ($this->dataStoreType == null) {
+            $this->initDataStore();
         }
 
-        $this->pageRedirections[$sourcePageId]['TargetPage'] = $targetPageId;
-        $this->pageRedirections[$sourcePageId]['CreationDate'] = $this->currentDate;
-        // If the call come from the admin page and not from the process function
-        if (substr_count($_SERVER['HTTP_REFERER'], 'admin.php')) {
+        if ($this->dataStoreType == self::DATA_STORE_TYPE_CONF_FILE) {
 
-            $this->pageRedirections[$sourcePageId]['IsValidate'] = 'Y';
-            $this->pageRedirections[$sourcePageId]['CountOfRedirection'] = 0;
-            $this->pageRedirections[$sourcePageId]['LastRedirectionDate'] = $this->lang['Never'];
-            $this->pageRedirections[$sourcePageId]['LastReferrer'] = 'Never';
+            if (isset($this->pageRedirections[$sourcePageId])) {
+                $this->throwRuntimeException('Redirection for page (' . $sourcePageId . 'already exist');
+            }
+
+            $this->pageRedirections[$sourcePageId]['TargetPage'] = $targetPageId;
+            $this->pageRedirections[$sourcePageId]['CreationDate'] = $creationDate;
+            // If the call come from the admin page and not from the process function
+            if (substr_count($_SERVER['HTTP_REFERER'], 'admin.php')) {
+
+                $this->pageRedirections[$sourcePageId]['IsValidate'] = 'Y';
+                $this->pageRedirections[$sourcePageId]['CountOfRedirection'] = 0;
+                $this->pageRedirections[$sourcePageId]['LastRedirectionDate'] = $this->lang['Never'];
+                $this->pageRedirections[$sourcePageId]['LastReferrer'] = 'Never';
+
+            } else {
+
+                $this->pageRedirections[$sourcePageId]['IsValidate'] = 'N';
+                $this->pageRedirections[$sourcePageId]['CountOfRedirection'] = 1;
+                $this->pageRedirections[$sourcePageId]['LastRedirectionDate'] = $creationDate;
+                if ($_SERVER['HTTP_REFERER'] <> '') {
+                    $this->pageRedirections[$sourcePageId]['LastReferrer'] = $_SERVER['HTTP_REFERER'];
+                } else {
+                    $this->pageRedirections[$sourcePageId]['LastReferrer'] = $this->lang['Direct Access'];
+                }
+
+            }
+
+            if (!$this->isValidURL($targetPageId)) {
+                $this->pageRedirections[$sourcePageId]['TargetPageType'] = 'Internal Page';
+            } else {
+                $this->pageRedirections[$sourcePageId]['TargetPageType'] = 'Url';
+            }
+
+            $this->savePageRedirections();
 
         } else {
 
-            $this->pageRedirections[$sourcePageId]['IsValidate'] = 'N';
-            $this->pageRedirections[$sourcePageId]['CountOfRedirection'] = 1;
-            $this->pageRedirections[$sourcePageId]['LastRedirectionDate'] = $this->currentDate;
-            if ($_SERVER['HTTP_REFERER'] <> '') {
-                $this->pageRedirections[$sourcePageId]['LastReferrer'] = $_SERVER['HTTP_REFERER'];
+            // Note the order is important
+            // because it's used in the bin of the update statement
+            $entry = array(
+                'target' => $targetPageId,
+                'creation_timestamp' => $creationDate,
+                'source' => $sourcePageId
+            );
+
+            $statement = 'select * from redirections where source = ?';
+            $res = $this->sqlite->query($statement, $sourcePageId);
+            $count = $this->sqlite->res2count($res);
+            if ($count <> 1) {
+                $res = $this->sqlite->storeEntry('redirections', $entry);
+                if (!$res) {
+                    $this->throwRuntimeException("There was a problem during insertion");
+                }
             } else {
-                $this->pageRedirections[$sourcePageId]['LastReferrer'] = $this->lang['Direct Access'];
+                // Primary key constraint, the storeEntry function does not use an UPSERT
+                $statement = 'update redirections set target = ?, creation_timestamp = ? where source = ?';
+                $res = $this->sqlite->query($statement, $entry);
+                if (!$res) {
+                    $this->throwRuntimeException("There was a problem during the update");
+                }
             }
 
         }
-
-        if (!$this->isValidURL($targetPageId)) {
-            $this->pageRedirections[$sourcePageId]['TargetPageType'] = 'Internal Page';
-        } else {
-            $this->pageRedirections[$sourcePageId]['TargetPageType'] = 'Url';
-        }
-
-        $this->savePageRedirections();
     }
 
     /**
@@ -415,8 +470,20 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
     function validateRedirection($sourcePageId)
     {
         $sourcePageId = strtolower($sourcePageId);
-        $this->pageRedirections[$sourcePageId]['IsValidate'] = 'Y';
-        $this->savePageRedirections();
+
+        if ($this->dataStoreType == null) {
+            $this->initDataStore();
+        }
+
+        if ($this->dataStoreType == self::DATA_STORE_TYPE_CONF_FILE) {
+
+            $this->pageRedirections[$sourcePageId]['IsValidate'] = 'Y';
+            $this->savePageRedirections();
+        } else {
+
+            $this->throwRuntimeException('Not implemented for a SQLite data store');
+
+        }
     }
 
     /**
@@ -427,52 +494,143 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
     function getIsValidate($sourcePageId)
     {
         $sourcePageId = strtolower($sourcePageId);
-        if ($this->pageRedirections[$sourcePageId]['IsValidate'] == null) {
-            return 'N';
+
+        if ($this->dataStoreType == null) {
+            $this->initDataStore();
+        }
+
+        if ($this->dataStoreType == self::DATA_STORE_TYPE_CONF_FILE) {
+
+            if ($this->pageRedirections[$sourcePageId]['IsValidate'] == null) {
+                return 'N';
+            } else {
+                return $this->pageRedirections[$sourcePageId]['IsValidate'];
+            }
         } else {
-            return $this->pageRedirections[$sourcePageId]['IsValidate'];
+
+            $this->throwRuntimeException("Not Yet implemented");
+
         }
     }
 
     /**
      * Get TargetPageType
      * @param    string $sourcePageId
+     * @return
+     * @throws Exception
      */
     function getTargetPageType($sourcePageId)
     {
-        $sourcePageId = strtolower($sourcePageId);
-        return $this->pageRedirections[$sourcePageId]['TargetPageType'];
+        if ($this->dataStoreType == null) {
+            $this->initDataStore();
+        }
+
+        if ($this->dataStoreType == self::DATA_STORE_TYPE_CONF_FILE) {
+
+            $sourcePageId = strtolower($sourcePageId);
+            return $this->pageRedirections[$sourcePageId]['TargetPageType'];
+
+        } else {
+
+            throw new Exception('Not Yet implemented');
+
+        }
+
     }
 
     /**
      * Get TargetResource (It can be an external URL as an intern page id
      * @param    string $sourcePageId
+     * @return
+     * @throws Exception
      */
     function getRedirectionTarget($sourcePageId)
     {
-        $sourcePageId = strtolower($sourcePageId);
-        return $this->pageRedirections[strtolower($sourcePageId)]['TargetPage'];
+
+        if ($this->dataStoreType == null) {
+            $this->initDataStore();
+        }
+
+        if ($this->dataStoreType == self::DATA_STORE_TYPE_CONF_FILE) {
+
+            $sourcePageId = strtolower($sourcePageId);
+            return $this->pageRedirections[strtolower($sourcePageId)]['TargetPage'];
+
+        } else {
+
+            $res = $this->sqlite->query("select target from redirections where source = ?", $sourcePageId);
+            if (!$res) {
+                throw new RuntimeException("An exception has occurred with the query");
+            }
+            $value = $this->sqlite->res2single($res);
+            return $value;
+
+        }
     }
 
     /**
-     * Update Redirection Action Data as Referrer, Count Of Redirection, Redirection Date
-     * @param    string $sourcePageId
+     *
+     *   * For a conf file, it will update the Redirection Action Data as Referrer, Count Of Redirection, Redirection Date
+     *   * For a SQlite database, it will add a row into the log
+     *
+     * @param string $sourcePageId
+     * @param $targetPageId
+     * @param $type
      */
-    function updateRedirectionMetaData($sourcePageId)
+    function logRedirection($sourcePageId, $targetPageId, $type)
     {
-        $sourcePageId = strtolower($sourcePageId);
-        $this->pageRedirections[$sourcePageId]['LastRedirectionDate'] = $this->currentDate;
-        $this->pageRedirections[$sourcePageId]['LastReferrer'] = $_SERVER['HTTP_REFERER'];
-        $this->pageRedirections[$sourcePageId]['CountOfRedirection'] += 1;
-        $this->savePageRedirections();
+        if ($this->dataStoreType == null) {
+            $this->initDataStore();
+        }
+
+        if ($this->dataStoreType == self::DATA_STORE_TYPE_CONF_FILE) {
+
+            $sourcePageId = strtolower($sourcePageId);
+            $this->pageRedirections[$sourcePageId]['LastRedirectionDate'] = $this->currentDate;
+            $this->pageRedirections[$sourcePageId]['LastReferrer'] = $_SERVER['HTTP_REFERER'];
+            // This cause to add one after the first insert but yeah, this is going to dye anyway
+            $this->pageRedirections[$sourcePageId]['CountOfRedirection'] += 1;
+            $this->savePageRedirections();
+
+        } else {
+
+            $row = array(
+                "TIMESTAMP" => $this->currentDate,
+                "SOURCE" => $sourcePageId,
+                "TARGET" => $targetPageId,
+                "REFERRER" => $_SERVER['HTTP_REFERER'],
+                "TYPE" => $type
+            );
+            $res = $this->sqlite->storeEntry('redirections_log', $row);
+
+            if (!$res) {
+                throw new RuntimeException("An error occurred");
+            }
+        }
     }
 
     /**
      * Serialize and save the redirection data file
+     *
+     * ie Flush
+     *
      */
     function savePageRedirections()
     {
-        io_saveFile($this->pageRedirectionsFilePath, serialize($this->pageRedirections));
+
+        if ($this->dataStoreType == null) {
+            $this->initDataStore();
+        }
+
+        if ($this->dataStoreType == self::DATA_STORE_TYPE_CONF_FILE) {
+
+            io_saveFile(self::DATA_STORE_CONF_FILE_PATH, serialize($this->pageRedirections));
+
+        } else {
+
+            $this->throwRuntimeException('SavePageRedirections must no be called for a SQLite data store');
+
+        }
     }
 
     /**
@@ -487,28 +645,10 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
         return preg_match('|^http(s)?://[a-z0-9-]+(.[a-z0-9-]+)*(:[0-9]+)?(/.*)?$|i', $url);
     }
 
-    function addPatternRedirection($pattern, $substitution, $applyAlwaysSubstitution)
-    {
-        $hash = hash($pattern.$substitution.$applyAlwaysSubstitution);
-        $this->pagePatternRedirections[$hash]['pattern'] = $pattern;
-        $this->pagePatternRedirections[$hash]['substitution'] = $substitution;
-        $this->pagePatternRedirections[$hash]['substitution'] = $applyAlwaysSubstitution;
-        $this->savePagePatternRedirections();
-    }
-
-    function savePagePatternRedirections()
-    {
-        io_saveFile($this->pagePatternRedirectionsFilePath, serialize($this->pagePatternRedirections));
-    }
-
-    function deletePatternRedirection($redirectionId)
-    {
-        unset($this->pagePatternRedirections[strtolower($redirectionId)]);
-        $this->savePagePatternRedirections();
-    }
 
     /**
-     * @return 1, 0 or false
+     * @param $inputExpression
+     * @return false|int 1|0
      * returns:
      *    - 1 if the input expression is a pattern,
      *    - 0 if not,
@@ -519,6 +659,203 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
 
         $regularExpressionPattern = "/(\\/.*\\/[gmixXsuUAJ]?)/";
         return preg_match($regularExpressionPattern, $inputExpression);
+
+    }
+
+    /**
+     *
+     * Set the data store type. The value must be one of the constants
+     *   * DATA_STORE_TYPE_CONF_FILE
+     *   * DATA_STORE_TYPE_SQLITE
+     *
+     * @param $dataStoreType
+     * @return $this
+     *
+     */
+    public function setDataStoreType($dataStoreType)
+    {
+        $this->dataStoreType = $dataStoreType;
+        $this->initDataStore();
+        return $this;
+    }
+
+    /**
+     * Init the data store
+     */
+    private function initDataStore()
+    {
+
+        if ($this->dataStoreType == null) {
+            $this->sqlite = plugin_load('helper', 'sqlite');
+            if (!$this->sqlite) {
+                $this->dataStoreType = self::DATA_STORE_TYPE_CONF_FILE;
+            } else {
+                $this->dataStoreType = self::DATA_STORE_TYPE_SQLITE;
+            }
+        }
+
+        if ($this->getDataStoreType() == self::DATA_STORE_TYPE_CONF_FILE) {
+
+            msg($this->getLang('SqliteMandatory'), MANAGER404_MSG_INFO, $allow = MSG_MANAGERS_ONLY);
+
+            //Set the redirection data
+            if (@file_exists(self::DATA_STORE_CONF_FILE_PATH)) {
+                $this->pageRedirections = unserialize(io_readFile(self::DATA_STORE_CONF_FILE_PATH, false));
+            }
+
+        } else {
+
+            // initialize the database connection
+            $pluginName = $this->infoPlugin['base'];
+            if ($this->sqlite == null) {
+                $this->sqlite = plugin_load('helper', 'sqlite');
+                if (!$this->sqlite) {
+                    $this->throwRuntimeException("Unable to load the sqlite plugin");
+                }
+            }
+            $init = $this->sqlite->init($pluginName, DOKU_PLUGIN . $pluginName . '/db/');
+            if (!$init) {
+                msg($this->lang['SqliteUnableToInitialize'], MSG_MANAGERS_ONLY);
+                return;
+            }
+
+            // Migration of the old store
+            if (@file_exists(self::DATA_STORE_CONF_FILE_PATH)) {
+                $this->dataStoreMigration();
+            }
+
+
+        }
+
+    }
+
+    /**
+     * Delete all redirections
+     * Use with caution
+     */
+    function deleteAllRedirections()
+    {
+        if ($this->dataStoreType == null) {
+            $this->initDataStore();
+        }
+
+        if ($this->dataStoreType == self::DATA_STORE_TYPE_SQLITE) {
+
+            $res = $this->sqlite->query("delete from redirections");
+            if (!$res) {
+                $this->throwRuntimeException('Errors during delete of all redirections');
+            }
+
+        } else {
+
+            if (file_exists(self::DATA_STORE_CONF_FILE_PATH)) {
+                $res = unlink(self::DATA_STORE_CONF_FILE_PATH);
+                if (!$res) {
+                    $this->throwRuntimeException('Unable to delete the file ' . self::DATA_STORE_TYPE_CONF_FILE);
+                }
+            }
+            $this->pageRedirections = array();
+
+        }
+    }
+
+    /**
+     * Return the number of redirections
+     * @return integer
+     */
+    function countRedirections()
+    {
+        if ($this->dataStoreType == null) {
+            $this->initDataStore();
+        }
+
+        if ($this->dataStoreType == self::DATA_STORE_TYPE_SQLITE) {
+
+            $res = $this->sqlite->query("select count(1) from redirections");
+            if (!$res) {
+                throw new RuntimeException('Errors during delete of all redirections');
+            }
+            $value = $this->sqlite->res2single($res);
+            return $value;
+
+        } else {
+
+            return count($this->pageRedirections);
+
+        }
+    }
+
+    public function getDataStoreType()
+    {
+        if ($this->dataStoreType == null) {
+            $this->initDataStore();
+        }
+        return $this->dataStoreType;
+    }
+
+    /**
+     * @return array
+     */
+    private function getRedirections()
+    {
+        if ($this->dataStoreType == null) {
+            $this->initDataStore();
+        }
+
+        if ($this->dataStoreType == self::DATA_STORE_TYPE_SQLITE) {
+
+            $res = $this->sqlite->query("select * from redirections");
+            if (!$res) {
+                throw new RuntimeException('Errors during select of all redirections');
+            }
+            $row = $this->sqlite->res2arr($res);
+            return $row;
+
+        } else {
+
+            return $this->pageRedirections;
+
+        }
+    }
+
+    /**
+     * Dokuwiki will show a pink message when throwing an eexception
+     * and it's difficult to see from where it comes
+     *
+     * This utility function will add the plugin name to it
+     *
+     * @param $message
+     */
+    private function throwRuntimeException($message): void
+    {
+        throw new RuntimeException($this->getPluginName() . ' - ' . $message);
+    }
+
+    /**
+     * Migrate from a conf file to sqlite
+     */
+    function dataStoreMigration()
+    {
+        if (!file_exists(self::DATA_STORE_CONF_FILE_PATH)) {
+            $this->throwRuntimeException("The file to migrate does not exist (" . self::DATA_STORE_CONF_FILE_PATH . ")");
+        }
+        // We cannot use the getRedirections method because this is a sqlite data store
+        // it will return nothing
+        $pageRedirections = unserialize(io_readFile(self::DATA_STORE_CONF_FILE_PATH, false));
+        foreach ($pageRedirections as $key => $row) {
+
+
+            $sourcePageId = $key;
+            $targetPageId = $row['TargetPage'];
+            $creationDate = $row['CreationDate'];
+            $isValidate = $row['IsValidate'];
+
+            if ($isValidate == 'Y') {
+                $this->addRedirectionWithDate($sourcePageId, $targetPageId, $creationDate);
+            }
+        }
+
+        rename(self::DATA_STORE_CONF_FILE_PATH, self::DATA_STORE_CONF_FILE_PATH . '.migrated');
 
     }
 
