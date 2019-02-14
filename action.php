@@ -589,7 +589,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
                     if ($i > 10) {
                         $this->message->addContent('<li>' .
                             tpl_link(
-                                "doku.php?id=" . $pageId . "&do=search&q=" . rawurldecode($pageName),
+                                wl($pageId) . "&do=search&q=" . rawurldecode($pageName),
                                 "More ...",
                                 'class="" rel="nofollow" title="More..."',
                                 $return = true
