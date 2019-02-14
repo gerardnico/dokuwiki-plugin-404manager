@@ -130,7 +130,34 @@ You can find the meta data:
   * for the older version: in the file 404managerRedirect.conf or 404managerRedirect.conf.migrated in the directory DOKUWIKI_HOME\lib\plugins\404manager
 
 With the SQLite plugin, the data can be queried directly through its admin page.
-  
+
+Example: 
+
+  * All redirections from the last 5 minutes:
+
+```sql
+select 
+  * 
+from 
+  redirections_log 
+where 
+  datetime(timestamp) > datetime('now','-5 minutes')
+order by 
+  datetime(timestamp) desc;
+```
+
+  * Count of redirections by minutes
+
+```sql
+select 
+  strftime('%H:%M', timestamp), 
+  count(1) 
+from 
+  redirections_log 
+group by 
+  strftime('%H:%M', timestamp)
+```
+
 ## Language
 The plugin is only translated in English but you can translate it in your own language.
 

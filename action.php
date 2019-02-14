@@ -82,7 +82,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
 
         /* This will call the function _displayRedirectMessage */
         $controller->register_hook(
-            'TPL_ACT_RENDER',
+            'TPL_TOP_RENDER',
             'BEFORE',
             $this,
             '_displayRedirectMessage',
