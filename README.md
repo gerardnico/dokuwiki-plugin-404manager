@@ -162,3 +162,14 @@ group by
 The plugin is only translated in English but you can translate it in your own language.
 
 Just copy the directory [lang/en](lang/en), rename it in your own language (For instance, for france, to lang/fr) and translate the files.
+
+
+## FMI
+
+[URL move for Google](https://support.google.com/webmasters/answer/7238431) Use 302 redirects, not 301 redirects 
+```text
+If you’re running an A/B test that redirects users from the original URL to a variation URL, 
+use a 302 (temporary) redirect, not a 301 (permanent) redirect. 
+This tells search engines that this redirect is temporary—it will only be in place as long as you’re running the experiment—and that they should keep the original URL in their index rather than replacing it with the target of the redirect (the test page). 
+JavaScript-based redirects are also fine.
+```
