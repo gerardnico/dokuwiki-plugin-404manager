@@ -102,28 +102,42 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
     function _handle404(&$event, $param)
     {
 
-        global $ACT;
-        if ($ACT != 'show') return false;
-
-        global $INFO;
-        if ($INFO['exists']) return false;
-
         // We instantiate the redirect manager because it's use overall
         // it holds the function and methods
         require_once(dirname(__FILE__) . '/admin.php');
         if ($this->redirectManager == null) {
             $this->redirectManager = admin_plugin_404manager::get();
         }
+
+
+
+        global $INFO;
+        if ($INFO['exists']){
+            $this->redirectManager->processMeta();
+            return false;
+        }
+
+
+        global $ACT;
+        if ($ACT != 'show') return false;
+
+
+
+
+
         // Event is also used in some sub-function, we make it them object scope
         $this->event = $event;
+
 
 
         // Global variable needed in the process
         global $ID;
         global $conf;
+
         $targetPage = $this->redirectManager->getRedirectionTarget($ID);
 
-        // If this is an external redirect
+
+        // If this is an external redirect (other domain)
         if ($this->redirectManager->isValidURL($targetPage) && $targetPage) {
 
             $this->redirectToExternalPage($targetPage);
@@ -133,7 +147,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
 
         // Internal redirect
 
-        // Their is one action for a writer:
+        // There is one action for a writer:
         //   * edit mode direct
         // If the user is a writer (It have the right to edit).
         If ($this->userCanWrite() && $this->getConf(self::GO_TO_EDIT_MODE) == 1) {
@@ -153,7 +167,14 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         // If the page exist
         if (page_exists($targetPage)) {
 
-            $this->redirectToDokuwikiPage($targetPage, self::REDIRECT_TARGET_PAGE_FROM_DATASTORE);
+            // Canonical
+            if ($ID=="webcomponent:frontmatter"){
+                $ID="dokuwiki:webcomponent:frontmatter";
+                $INFO['id']=$ID;
+                return true;
+            }
+
+            $this->httpRedirectToDokuwikiPage($targetPage, self::REDIRECT_TARGET_PAGE_FROM_DATASTORE);
             return true;
 
         }
@@ -183,13 +204,13 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
                     // Start page with the conf['start'] parameter
                     $startPage = getNS($ID) . ':' . $conf['start'];
                     if (page_exists($startPage)) {
-                        $this->redirectToDokuwikiPage($startPage, self::REDIRECT_SOURCE_START_PAGE);
+                        $this->httpRedirectToDokuwikiPage($startPage, self::REDIRECT_SOURCE_START_PAGE);
                         return true;
                     }
                     // Start page with the same name than the namespace
                     $startPage = getNS($ID) . ':' . curNS($ID);
                     if (page_exists($startPage)) {
-                        $this->redirectToDokuwikiPage($startPage, self::REDIRECT_SOURCE_START_PAGE);
+                        $this->httpRedirectToDokuwikiPage($startPage, self::REDIRECT_SOURCE_START_PAGE);
                         return true;
                     }
                     break;
@@ -211,9 +232,9 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
                     // Compare the two score
                     if ($scorePageName > 0 or $namespaceScore > 0) {
                         if ($scorePageName > $namespaceScore) {
-                            $this->redirectToDokuwikiPage($bestPageId, self::REDIRECT_SOURCE_BEST_PAGE_NAME);
+                            $this->httpRedirectToDokuwikiPage($bestPageId, self::REDIRECT_SOURCE_BEST_PAGE_NAME);
                         } else {
-                            $this->redirectToDokuwikiPage($bestNamespaceId, self::REDIRECT_SOURCE_BEST_PAGE_NAME);
+                            $this->httpRedirectToDokuwikiPage($bestNamespaceId, self::REDIRECT_SOURCE_BEST_PAGE_NAME);
                         }
                         return true;
                     }
@@ -226,7 +247,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
                     $score = $scoreNamespace['score'];
 
                     if ($score > 0) {
-                        $this->redirectToDokuwikiPage($bestNamespaceId, self::REDIRECT_SOURCE_BEST_NAMESPACE);
+                        $this->httpRedirectToDokuwikiPage($bestNamespaceId, self::REDIRECT_SOURCE_BEST_NAMESPACE);
                         return true;
                     }
                     break;
@@ -432,7 +453,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
      * @param string|the $redirectSource the source of the redirect
      * @throws Exception
      */
-    private function redirectToDokuwikiPage($targetPage, $redirectSource = 'Not Known')
+    private function httpRedirectToDokuwikiPage($targetPage, $redirectSource = 'Not Known')
     {
 
         global $ID;
@@ -446,11 +467,6 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         if ($perm <= AUTH_NONE) {
             return;
         }
-
-        // TODO: Create a cache table ? with the source, target and type of redirections ?
-        // if (!$this->redirectManager->isRedirectionPresent($ID)) {
-        //    $this->redirectManager->addRedirection($ID, $targetPage);
-        //}
 
         // Redirection
         $this->redirectManager->logRedirection($ID, $targetPage, $redirectSource);

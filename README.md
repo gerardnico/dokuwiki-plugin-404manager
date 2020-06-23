@@ -17,6 +17,7 @@ in order to move page around. The most important problem is that thus external l
 ## What can this plugin do ?
 
 ### For writers
+
   * Automatic redirection in edit mode
   * A message is shown when the page name already exist in other pages.
 
@@ -78,7 +79,7 @@ Action, you can perform :
 
 The redirection by best name page is an simple algorithm which occurs to find the best page by name.
 
-It calculate a score for two kinds of page :
+It calculates a score for two kinds of page :
 
   * the start pages of a namespace
   * the pages with the same name

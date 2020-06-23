@@ -1,10 +1,5 @@
 <?php
-/**
- * Created by IntelliJ IDEA.
- * User: gerard
- * Date: 18/06/2018
- * Time: 20:56
- */
+
 
 class Message404
 {
