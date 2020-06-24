@@ -615,7 +615,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
     /**
      * Process metadata
      */
-    function processMeta()
+    function processCanonical()
     {
 
 
@@ -632,6 +632,27 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
         $canonical = p_get_metadata($ID, "canonical");
         if ($canonical != "") {
 
+            // Do we have a page attached to this canonical
+            $res = $this->sqlite->query("select ID from pages where CANONICAL = ?", $canonical);
+            if (!$res) {
+                throw new RuntimeException("An exception has occurred with the search id from canonical");
+            }
+            $idInDb = $this->sqlite->res2single($res);
+            if ($idInDb && $idInDb!=$ID){
+                // If the page does not exist anymore we delete it
+                if (!page_exists($idInDb)){
+                    $res = $this->sqlite->query("delete from pages where ID = ?", $idInDb);
+                    if (!$res) {
+                        throw new RuntimeException("An exception has occurred during the deletion of the page");
+                    }
+
+                } else {
+                    msg("The page (".$ID.") and the page (".$idInDb.") have the same canonical.", MANAGER404_MSG_ERROR, $allow = MSG_MANAGERS_ONLY);
+                }
+                $this->persistPageAlias($canonical,$idInDb);
+            }
+
+            // Do we have a canonical on this page
             $res = $this->sqlite->query("select canonical from pages where ID = ?", $ID);
             if (!$res) {
                 throw new RuntimeException("An exception has occurred with the query");
@@ -644,19 +665,8 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
             );
             if ($canonicalInDb && $canonicalInDb != $canonical) {
 
-                // Page has change of location
-                // Creation of an alias
-                $res = $this->sqlite->query("select * from pages_alias where CANONICAL = ? and ALIAS = ?", $row);
-                if (!$res) {
-                    throw new RuntimeException("An exception has occurred with the alia selection query");
-                }
-                $aliasInDb = $this->sqlite->res2count($res);
-                if ($aliasInDb == 0) {
-                    $res = $this->sqlite->storeEntry('pages_alias', $row);
-                    if (!$res) {
-                        $this->throwRuntimeException("There was a problem during pages_alias insertion");
-                    }
-                }
+                // Persist alias
+                $this->persistPageAlias($canonical,$ID);
 
                 // Update
                 $statement = 'update pages set canonical = ? where id = ?';
@@ -997,6 +1007,31 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
         }
 
         rename(self::DATA_STORE_CONF_FILE_PATH, self::DATA_STORE_CONF_FILE_PATH . '.migrated');
+
+    }
+
+    private function persistPageAlias(string $canonical, string $alias)
+    {
+
+        $row = array(
+            "CANONICAL" => $canonical,
+            "ALIAS" => $alias
+        );
+
+        // Page has change of location
+        // Creation of an alias
+        $res = $this->sqlite->query("select * from pages_alias where CANONICAL = ? and ALIAS = ?", $row);
+        if (!$res) {
+            throw new RuntimeException("An exception has occurred with the alia selection query");
+        }
+        $aliasInDb = $this->sqlite->res2count($res);
+        if ($aliasInDb == 0) {
+
+            $res = $this->sqlite->storeEntry('pages_alias', $row);
+            if (!$res) {
+                $this->throwRuntimeException("There was a problem during pages_alias insertion");
+            }
+        }
 
     }
 

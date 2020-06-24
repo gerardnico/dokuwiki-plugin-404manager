@@ -89,6 +89,8 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
             array()
         );
 
+
+
     }
 
     /**
@@ -110,18 +112,15 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         }
 
 
-
         global $INFO;
         if ($INFO['exists']){
-            $this->redirectManager->processMeta();
+            $this->redirectManager->processCanonical();
             return false;
         }
 
 
         global $ACT;
         if ($ACT != 'show') return false;
-
-
 
 
 

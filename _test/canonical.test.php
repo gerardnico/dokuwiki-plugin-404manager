@@ -45,12 +45,17 @@ class canonical_plugin_404manager_test extends DokuWikiTest
 
         // Data
         $pageId = "web:javascript:variable";
+        $newPageId="lang:javascript:variable";
         $pageCanonical = "javascript:variable";
 
 
         // Reproducible test
         if ($redirectManager->pageExist($pageId)) {
             $redirectManager->deletePage($pageId);
+        }
+
+        if ($redirectManager->pageExist($newPageId)) {
+            $redirectManager->deletePage($newPageId);
         }
 
         if ($dataStoreType == admin_plugin_404manager::DATA_STORE_TYPE_SQLITE) {
@@ -77,7 +82,6 @@ class canonical_plugin_404manager_test extends DokuWikiTest
 
         // Page move
         saveWikiText($pageId, "", 'Page deletion');
-        $newPageId="lang:javascript:variable";
         saveWikiText($newPageId, $text, 'Page creation');
 
         // A request
@@ -88,8 +92,8 @@ class canonical_plugin_404manager_test extends DokuWikiTest
         if ($dataStoreType == admin_plugin_404manager::DATA_STORE_TYPE_SQLITE) {
             $this->assertEquals(0, $redirectManager->pageExist($pageId), "The old page does not exist");
             $this->assertEquals(1, $redirectManager->pageExist($newPageId), "The new page exist");
-            $pageRow = $redirectManager->getPage($pageId);
-            $this->assertEquals($pageCanonical, $pageRow['canonical'], "The canonical is the same");
+            $pageRow = $redirectManager->getPage($newPageId);
+            $this->assertEquals($pageCanonical, $pageRow[0]['CANONICAL'], "The canonical is the same");
         }
 
         // One assertion is needed for the other type of data store
