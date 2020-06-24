@@ -9,6 +9,7 @@
  */
 require_once(__DIR__ . '/../class/UrlStatic.php');
 require_once(__DIR__ . '/../action/urlmanager.php');
+require_once(__DIR__ . '/../action/message.php');
 require_once(__DIR__ . '/constant_parameters.php');
 class manager_plugin_404manager_test extends DokuWikiTest
 {
@@ -31,7 +32,8 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $AUTH_ACL = file($aclReadOnlyFile);
 
         $request = new TestRequest();
-        $request->get(array('id' => "ThisPageDoesNotExistAtAll"), '/doku.php');
+        $id = "This:Page:Does:Not:Exist:At:All";
+        $request->get(array('id' => $id), '/doku.php');
         $response = $request->execute();
 
 
@@ -40,12 +42,17 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $components = parse_url($locationHeader);
         parse_str($components['query'], $queryKeys);
         /** @noinspection PhpUndefinedMethodInspection */
-        $this->assertEquals($queryKeys['do'], 'search', "The page was redirected to the search page");
-        $this->assertEquals($queryKeys['id'], constant_parameters::$PAGE_DOES_NOT_EXIST_NO_REDIRECTION_ID, "The Id of the source page is the asked page");
-        $this->assertNotNull($queryKeys['q'], "The query must be not null");
-        $this->assertEquals($queryKeys[UrlRedirection::QUERY_STRING_ORIGIN_PAGE], constant_parameters::$PAGE_DOES_NOT_EXIST_NO_REDIRECTION_ID, "The 404 id must be present");
-        $this->assertEquals($queryKeys[UrlRedirection::QUERY_STRING_REDIR_TYPE], UrlRedirection::TARGET_ORIGIN_SEARCH_ENGINE, "The redirect type is known");
+        $this->assertEquals('search', $queryKeys['do'] , "The page was redirected to the search page");
+        /** @noinspection PhpUndefinedMethodInspection */
+        $this->assertEquals(strtolower($id), $queryKeys['id'], "The Id of the source page is the asked page");
+        /** @noinspection PhpUndefinedMethodInspection */
+        $this->assertEquals(str_replace(":"," ",strtolower($id)),$queryKeys['q'], "The query must be not null");
 
+        list($pageIdOrigin,$redirectSource) = action_plugin_404manager_message::getNotification();
+        /** @noinspection PhpUndefinedMethodInspection */
+        $this->assertEquals(strtolower($id),$pageIdOrigin,"The page origin should be in the session");
+        /** @noinspection PhpUndefinedMethodInspection */
+        $this->assertEquals(action_plugin_404manager_urlmanager::TARGET_ORIGIN_SEARCH_ENGINE,$redirectSource,"The source of the redirect should be in the session");
 
     }
 

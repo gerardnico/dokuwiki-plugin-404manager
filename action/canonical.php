@@ -21,6 +21,13 @@ class action_plugin_404manager_canonical extends DokuWiki_Action_Plugin
     const CANONICAL_ENABLED_CONF = 'CanonicalEnabled';
     const CANONICAL_LAST_NAMES_COUNT_CONF = 'LastNamesCanonicalCount';
 
+    function __construct()
+    {
+        // enable direct access to language strings
+        // ie $this->lang
+        $this->setupLocale();
+    }
+
     public function register(Doku_Event_Handler $controller)
     {
         $controller->register_hook('TPL_METAHEADER_OUTPUT', 'BEFORE', $this, 'metaCanonicalProcessing', array());
@@ -69,7 +76,7 @@ class action_plugin_404manager_canonical extends DokuWiki_Action_Plugin
                  */
                 $namesLength = sizeOf($names);
                 if ($namesLength >$canonicalLastNamesCount){
-                    array_slice ( $names , $namesLength-1-$canonicalLastNamesCount, );
+                    array_slice ( $names , $namesLength-1-$canonicalLastNamesCount );
                 }
                 /**
                  * If this is a start page, delete the name

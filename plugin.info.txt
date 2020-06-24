@@ -1,7 +1,7 @@
 base   404manager
 author Nicolas GERARD
 email  gerardnico@gmail.com
-date   2018-08-21
+date   2020-06-24
 name   404Manager Plugin
-desc   Manage the redirection of non-existent page
-url    http://gerardnico.com/dokuwiki/404managerplugin
+desc   Manage URL and rewriting such as redirection of non-existent page or rewriting of canonical URL
+url    https://datacadamia.com/dokuwiki/404managerplugin
