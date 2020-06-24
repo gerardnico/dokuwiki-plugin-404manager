@@ -1,14 +1,14 @@
 <?php
 /**
- * Integration Tests for the 404manager plugin through Dokuwiki Request
+ * Integration Tests for the handling of the canonical
  *
  * @group plugin_404manager
  * @group plugins
  *
  */
 
-require_once(__DIR__ . '/../class/url.canonical.php');
-class canonical_plugin_404manager_test extends DokuWikiTest
+require_once(__DIR__ . '/../class/UrlCanonical.php');
+class plugin_404manager_canonical_test extends DokuWikiTest
 {
 
     // Needed otherwise the plugin is not enabled
@@ -18,7 +18,6 @@ class canonical_plugin_404manager_test extends DokuWikiTest
     /**
      * Test a redirect to an external Web Site
      *
-     * @throws Exception
      */
     public function test_canonical()
     {
@@ -56,7 +55,7 @@ class canonical_plugin_404manager_test extends DokuWikiTest
         $request->get(array('id' => $pageId), '/doku.php');
         $request->execute();
 
-        $this->assertEquals($urlCanonicalManager->pageExist($pageId), 1, "The page was added");
+        $this->assertEquals($urlCanonicalManager->pageExist($pageId), 1, "The page was added to the table");
 
         // Page move
         saveWikiText($pageId, "", 'Page deletion');

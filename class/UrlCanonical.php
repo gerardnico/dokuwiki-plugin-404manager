@@ -3,13 +3,15 @@
 /**
  * Class urlCanonical with all canonical methodology
  */
-require_once(__DIR__ . '/url.manager.php');
+require_once(__DIR__ . '/UrlStatic.php');
 class UrlCanonical
 {
     /**
      * @var helper_plugin_sqlite $sqlite
      */
     private $sqlite;
+
+    static $urlCanonical;
 
 
     /**
@@ -22,7 +24,10 @@ class UrlCanonical
 
     public static function get()
     {
-        return new UrlCanonical();
+        if (self::$urlCanonical == null){
+            self::$urlCanonical = new UrlCanonical();
+        }
+        return self::$urlCanonical;
     }
 
     /**

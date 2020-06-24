@@ -5,7 +5,7 @@
  * The manager that handles the redirection metadata
  * @deprecated
  */
-require_once(__DIR__ . '/url.static.php');
+require_once(__DIR__ . '/UrlStatic.php');
 
 class UrlRedirection
 {

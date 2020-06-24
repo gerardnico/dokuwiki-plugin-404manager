@@ -8,6 +8,9 @@ if (!defined('DOKU_INC')) die();
  *
  * Bug:
  *   * https://gerardnico.com/web/browser/lighthouse - no interwiki
+ *
+ *   * The name of the file should be the last name of the class
+ *   * There should be only one name
  */
 class action_plugin_404manager_canonical extends DokuWiki_Action_Plugin
 {
@@ -29,7 +32,7 @@ class action_plugin_404manager_canonical extends DokuWiki_Action_Plugin
      *
      * @param $event
      */
-    private function metaCanonicalProcessing($event)
+    function metaCanonicalProcessing($event)
     {
         global $ID;
         global $conf;

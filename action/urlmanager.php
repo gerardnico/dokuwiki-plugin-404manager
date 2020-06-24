@@ -3,10 +3,12 @@
 if (!defined('DOKU_INC')) die();
 if (!defined('DOKU_PLUGIN')) define('DOKU_PLUGIN', DOKU_INC . 'lib/plugins/');
 // Needed for the page lookup
-require_once(DOKU_INC . 'inc/fulltext.php');
+//require_once(DOKU_INC . 'inc/fulltext.php');
 // Needed to get the redirection manager
-require_once(DOKU_PLUGIN . 'action.php');
+// require_once(DOKU_PLUGIN . 'action.php');
 
+require_once(__DIR__ . '/../class/UrlRedirection.php');
+require_once(__DIR__ . '/../class/UrlCanonical.php');
 /**
  * Class action_plugin_404manager_url
  *
@@ -14,12 +16,9 @@ require_once(DOKU_PLUGIN . 'action.php');
  *
  *
  */
-class action_plugin_404manager_url extends DokuWiki_Action_Plugin
+class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
 {
 
-
-    var $targetId = '';
-    var $sourceId = '';
 
     // The redirect type
     const REDIRECT_HTTP_EXTERNAL = 'External';
@@ -61,9 +60,6 @@ class action_plugin_404manager_url extends DokuWiki_Action_Plugin
     // The name in the session variable
     const MANAGER404_MSG = '404manager_msg';
 
-    // To identify the object
-    private $objectId;
-
     // Query String variable name to send the redirection message
     const QUERY_STRING_ORIGIN_PAGE = '404id';
     const QUERY_STRING_REDIR_TYPE = '404type';
@@ -76,7 +72,7 @@ class action_plugin_404manager_url extends DokuWiki_Action_Plugin
     {
         // enable direct access to language strings
         $this->setupLocale();
-        require_once(dirname(__FILE__) . '/Message404.php');
+        require_once(__DIR__ . '/../class/message.model.php');
         $this->message = new Message404();
     }
 
@@ -84,7 +80,6 @@ class action_plugin_404manager_url extends DokuWiki_Action_Plugin
     function register(Doku_Event_Handler $controller)
     {
 
-        $this->objectId = spl_object_hash($this);
 
         /* This will call the function _handle404 */
         $controller->register_hook('DOKUWIKI_STARTED',
@@ -118,16 +113,15 @@ class action_plugin_404manager_url extends DokuWiki_Action_Plugin
 
         // We instantiate the redirect manager because it's use overall
         // it holds the function and methods
-        require_once(dirname(__FILE__) . '/admin.php');
         if ($this->redirectManager == null) {
-            $this->redirectManager = admin_plugin_404manager::get();
+            $this->redirectManager = UrlRedirection::get();
         }
 
 
         global $INFO;
         if ($INFO['exists']) {
             // Check if there is a canonical meta
-            $this->redirectManager->processCanonicalMeta();
+            UrlCanonical::get()->processCanonicalMeta();
             return false;
         }
 
@@ -145,7 +139,7 @@ class action_plugin_404manager_url extends DokuWiki_Action_Plugin
         global $conf;
 
         // Do we have a canonical ?
-        $targetPage = $this->redirectManager->getPageIdFromCanonical($ID);
+        $targetPage = UrlCanonical::get()->getPageIdFromCanonical($ID);
         if ($targetPage) {
 
             $this->internalRedirect($targetPage, self::TARGET_ORIGIN_CANONICAL);
