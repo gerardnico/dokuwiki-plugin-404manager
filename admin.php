@@ -615,7 +615,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
     /**
      * Process metadata
      */
-    function processCanonical()
+    function processCanonicalMeta()
     {
 
 
@@ -638,18 +638,18 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
                 throw new RuntimeException("An exception has occurred with the search id from canonical");
             }
             $idInDb = $this->sqlite->res2single($res);
-            if ($idInDb && $idInDb!=$ID){
+            if ($idInDb && $idInDb != $ID) {
                 // If the page does not exist anymore we delete it
-                if (!page_exists($idInDb)){
+                if (!page_exists($idInDb)) {
                     $res = $this->sqlite->query("delete from pages where ID = ?", $idInDb);
                     if (!$res) {
                         throw new RuntimeException("An exception has occurred during the deletion of the page");
                     }
 
                 } else {
-                    msg("The page (".$ID.") and the page (".$idInDb.") have the same canonical.", MANAGER404_MSG_ERROR, $allow = MSG_MANAGERS_ONLY);
+                    msg("The page (" . $ID . ") and the page (" . $idInDb . ") have the same canonical.", MANAGER404_MSG_ERROR, $allow = MSG_MANAGERS_ONLY);
                 }
-                $this->persistPageAlias($canonical,$idInDb);
+                $this->persistPageAlias($canonical, $idInDb);
             }
 
             // Do we have a canonical on this page
@@ -666,7 +666,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
             if ($canonicalInDb && $canonicalInDb != $canonical) {
 
                 // Persist alias
-                $this->persistPageAlias($canonical,$ID);
+                $this->persistPageAlias($canonical, $ID);
 
                 // Update
                 $statement = 'update pages set canonical = ? where id = ?';
@@ -727,9 +727,9 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
      *
      * @param string $sourcePageId
      * @param $targetPageId
-     * @param $type
+     * @param $targetOrigin
      */
-    function logRedirection($sourcePageId, $targetPageId, $type)
+    function logRedirection($sourcePageId, $targetPageId, $targetOrigin)
     {
         if ($this->dataStoreType == null) {
             $this->initDataStore();
@@ -751,7 +751,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
                 "SOURCE" => $sourcePageId,
                 "TARGET" => $targetPageId,
                 "REFERRER" => $_SERVER['HTTP_REFERER'],
-                "TYPE" => $type
+                "TYPE" => $targetOrigin
             );
             $res = $this->sqlite->storeEntry('redirections_log', $row);
 
@@ -1032,6 +1032,47 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
                 $this->throwRuntimeException("There was a problem during pages_alias insertion");
             }
         }
+
+    }
+
+    /**
+     * @param $canonical
+     * @return string|bool - an id of an existent page
+     */
+    function getPageIdFromCanonical($canonical)
+    {
+
+        // Canonical
+        $res = $this->sqlite->query("select * from pages where CANONICAL = ? ", $canonical);
+        if (!$res) {
+            throw new RuntimeException("An exception has occurred with the pages selection query");
+        }
+        if ($this->sqlite->res2count($res) > 0) {
+            foreach ($this->sqlite->res2arr($res) as $row) {
+                $id = $row['ID'];
+                if (page_exists($id)) {
+                    return $id;
+                }
+            }
+        }
+
+        // If the function comes here, it means that the page id was not found in the pages table
+        // Alias ?
+        // Canonical
+        $res = $this->sqlite->query("select p.ID from pages p, PAGES_ALIAS pa where p.CANONICAL = pa.CANONICAL and pa.ALIAS = ? ", $canonical);
+        if (!$res) {
+            throw new RuntimeException("An exception has occurred with the alias selection query");
+        }
+        if ($this->sqlite->res2count($res) > 0) {
+            foreach ($this->sqlite->res2arr($res) as $row) {
+                $id = $row['ID'];
+                if (page_exists($id)) {
+                    return $id;
+                }
+            }
+        }
+
+        return false;
 
     }
 

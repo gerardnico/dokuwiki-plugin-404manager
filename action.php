@@ -14,17 +14,23 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
     var $targetId = '';
     var $sourceId = '';
 
-    // The redirect source
-    const REDIRECT_TARGET_PAGE_FROM_DATASTORE = 'dataStore';
-    const REDIRECT_EXTERNAL = 'External';
-    const REDIRECT_SOURCE_START_PAGE = 'startPage';
-    const REDIRECT_SOURCE_BEST_PAGE_NAME = 'bestPageName';
-    const REDIRECT_SOURCE_BEST_NAMESPACE = 'bestNamespace';
-    const REDIRECT_SEARCH_ENGINE = 'searchEngine';
+    // The redirect type
+    const REDIRECT_HTTP_EXTERNAL = 'External';
+    const REDIRECT_HTTP_INTERNAL = 'HttpInternal';
+    const REDIRECT_REWRITE = 'Rewrite';
+
+    // Where the target id value comes from
+    const TARGET_ORIGIN_DATA_STORE = 'dataStore';
+    const TARGET_ORIGIN_CANONICAL = 'canonical';
+    const TARGET_ORIGIN_START_PAGE = 'startPage';
+    const TARGET_ORIGIN_BEST_PAGE_NAME = 'bestPageName';
+    const TARGET_ORIGIN_BEST_NAMESPACE = 'bestNamespace';
+    const TARGET_ORIGIN_SEARCH_ENGINE = 'searchEngine';
 
     // The constant parameters
     const GO_TO_SEARCH_ENGINE = 'GoToSearchEngine';
     const GO_TO_BEST_NAMESPACE = 'GoToBestNamespace';
+    const GO_TO_BEST_END_PAGE_NAME = 'GoToBestEndPageName';
     const GO_TO_BEST_PAGE_NAME = 'GoToBestPageName';
     const GO_TO_NS_START_PAGE = 'GoToNsStartPage';
     const GO_TO_EDIT_MODE = 'GoToEditMode';
@@ -90,7 +96,6 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         );
 
 
-
     }
 
     /**
@@ -113,8 +118,9 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
 
 
         global $INFO;
-        if ($INFO['exists']){
-            $this->redirectManager->processCanonical();
+        if ($INFO['exists']) {
+            // Check if there is a canonical meta
+            $this->redirectManager->processCanonicalMeta();
             return false;
         }
 
@@ -123,23 +129,32 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         if ($ACT != 'show') return false;
 
 
-
         // Event is also used in some sub-function, we make it them object scope
         $this->event = $event;
-
 
 
         // Global variable needed in the process
         global $ID;
         global $conf;
 
+        // Do we have a canonical ?
+        $targetPage = $this->redirectManager->getPageIdFromCanonical($ID);
+        if ($targetPage) {
+
+            $this->internalRedirect($targetPage, self::TARGET_ORIGIN_CANONICAL);
+            return true;
+
+        }
+
+
+        // Get the page from redirection data
         $targetPage = $this->redirectManager->getRedirectionTarget($ID);
 
 
         // If this is an external redirect (other domain)
         if ($this->redirectManager->isValidURL($targetPage) && $targetPage) {
 
-            $this->redirectToExternalPage($targetPage);
+            $this->httpRedirect($targetPage, self::TARGET_ORIGIN_DATA_STORE);
             return true;
 
         }
@@ -149,7 +164,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         // There is one action for a writer:
         //   * edit mode direct
         // If the user is a writer (It have the right to edit).
-        If ($this->userCanWrite() && $this->getConf(self::GO_TO_EDIT_MODE) == 1) {
+        if ($this->userCanWrite() && $this->getConf(self::GO_TO_EDIT_MODE) == 1) {
 
             $this->gotToEditMode($event);
             // Stop here
@@ -166,19 +181,14 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         // If the page exist
         if (page_exists($targetPage)) {
 
-            // Canonical
-            if ($ID=="webcomponent:frontmatter"){
-                $ID="dokuwiki:webcomponent:frontmatter";
-                $INFO['id']=$ID;
-                return true;
-            }
-
-            $this->httpRedirectToDokuwikiPage($targetPage, self::REDIRECT_TARGET_PAGE_FROM_DATASTORE);
+            $this->internalRedirect($targetPage, self::TARGET_ORIGIN_DATA_STORE);
             return true;
 
         }
 
-        // We are still a reader, the redirection does not exist the user not allowed to edit the page (public of other)
+        /*
+         *  We are still a reader, the redirection does not exist the user is not allowed to edit the page (public of other)
+         */
         if ($this->getConf('ActionReaderFirst') == self::NOTHING) {
             return true;
         }
@@ -198,18 +208,23 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
                     return true;
                     break;
 
+                case self::GO_TO_BEST_END_PAGE_NAME:
+
+                    break;
+
                 case self::GO_TO_NS_START_PAGE:
 
                     // Start page with the conf['start'] parameter
                     $startPage = getNS($ID) . ':' . $conf['start'];
                     if (page_exists($startPage)) {
-                        $this->httpRedirectToDokuwikiPage($startPage, self::REDIRECT_SOURCE_START_PAGE);
+                        $this->httpRedirect($startPage, self::TARGET_ORIGIN_START_PAGE);
                         return true;
                     }
+
                     // Start page with the same name than the namespace
                     $startPage = getNS($ID) . ':' . curNS($ID);
                     if (page_exists($startPage)) {
-                        $this->httpRedirectToDokuwikiPage($startPage, self::REDIRECT_SOURCE_START_PAGE);
+                        $this->httpRedirect($startPage, self::TARGET_ORIGIN_START_PAGE);
                         return true;
                     }
                     break;
@@ -217,7 +232,6 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
                 case self::GO_TO_BEST_PAGE_NAME:
 
                     $bestPageId = null;
-
 
                     $bestPage = $this->getBestPage($ID);
                     $bestPageId = $bestPage['id'];
@@ -231,9 +245,9 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
                     // Compare the two score
                     if ($scorePageName > 0 or $namespaceScore > 0) {
                         if ($scorePageName > $namespaceScore) {
-                            $this->httpRedirectToDokuwikiPage($bestPageId, self::REDIRECT_SOURCE_BEST_PAGE_NAME);
+                            $this->internalRedirect($bestPageId, self::TARGET_ORIGIN_BEST_PAGE_NAME);
                         } else {
-                            $this->httpRedirectToDokuwikiPage($bestNamespaceId, self::REDIRECT_SOURCE_BEST_PAGE_NAME);
+                            $this->internalRedirect($bestNamespaceId, self::TARGET_ORIGIN_BEST_PAGE_NAME);
                         }
                         return true;
                     }
@@ -246,7 +260,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
                     $score = $scoreNamespace['score'];
 
                     if ($score > 0) {
-                        $this->httpRedirectToDokuwikiPage($bestNamespaceId, self::REDIRECT_SOURCE_BEST_NAMESPACE);
+                        $this->internalRedirect($bestNamespaceId, self::TARGET_ORIGIN_BEST_NAMESPACE);
                         return true;
                     }
                     break;
@@ -289,27 +303,27 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
 
             switch ($redirectSource) {
 
-                case self::REDIRECT_TARGET_PAGE_FROM_DATASTORE:
+                case self::TARGET_ORIGIN_DATA_STORE:
                     $this->message->addContent(sprintf($this->lang['message_redirected_by_redirect'], hsc($pageIdOrigin)));
                     $this->message->setType(Message404::TYPE_CLASSIC);
                     break;
 
-                case self::REDIRECT_SOURCE_START_PAGE:
+                case self::TARGET_ORIGIN_START_PAGE:
                     $this->message->addContent(sprintf($this->lang['message_redirected_to_startpage'], hsc($pageIdOrigin)));
                     $this->message->setType(Message404::TYPE_WARNING);
                     break;
 
-                case  self::REDIRECT_SOURCE_BEST_PAGE_NAME:
+                case  self::TARGET_ORIGIN_BEST_PAGE_NAME:
                     $this->message->addContent(sprintf($this->lang['message_redirected_to_bestpagename'], hsc($pageIdOrigin)));
                     $this->message->setType(Message404::TYPE_WARNING);
                     break;
 
-                case self::REDIRECT_SOURCE_BEST_NAMESPACE:
+                case self::TARGET_ORIGIN_BEST_NAMESPACE:
                     $this->message->addContent(sprintf($this->lang['message_redirected_to_bestnamespace'], hsc($pageIdOrigin)));
                     $this->message->setType(Message404::TYPE_WARNING);
                     break;
 
-                case self::REDIRECT_SEARCH_ENGINE:
+                case self::TARGET_ORIGIN_SEARCH_ENGINE:
                     $this->message->addContent(sprintf($this->lang['message_redirected_to_searchengine'], hsc($pageIdOrigin)));
                     $this->message->setType(Message404::TYPE_WARNING);
                     break;
@@ -318,7 +332,7 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
 
             // Add a list of page with the same name to the message
             // if the redirections is not planned
-            if ($redirectSource!=self::REDIRECT_TARGET_PAGE_FROM_DATASTORE) {
+            if ($redirectSource != self::TARGET_ORIGIN_DATA_STORE) {
                 $this->addToMessagePagesWithSameName($pageIdOrigin);
             }
 
@@ -338,7 +352,8 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
      * @param $id
      * @return array
      */
-    private function scoreBestNamespace($id)
+    private
+    function scoreBestNamespace($id)
     {
 
         global $conf;
@@ -397,7 +412,8 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
     /**
      * @param $event
      */
-    private function gotToEditMode(&$event)
+    private
+    function gotToEditMode(&$event)
     {
         global $ID;
         global $conf;
@@ -429,7 +445,8 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
      * Return if the user has the right/permission to create/write an article
      * @return bool
      */
-    private function userCanWrite()
+    private
+    function userCanWrite()
     {
         global $ID;
 
@@ -447,12 +464,16 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
     }
 
     /**
-     * Redirect to an internal page, no external resources
-     * @param $targetPage the target page id or an URL
-     * @param string|the $redirectSource the source of the redirect
+     * Redirect to an internal page ie:
+     *   * on the same domain
+     *   * no HTTP redirect
+     *   * id rewrite
+     * @param string $targetPage - target page id or an URL
+     * @param string $redirectSource the source of the redirect
      * @throws Exception
      */
-    private function httpRedirectToDokuwikiPage($targetPage, $redirectSource = 'Not Known')
+    private
+    function internalRedirect($targetPage, $redirectSource = 'Not Known')
     {
 
         global $ID;
@@ -470,31 +491,24 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         // Redirection
         $this->redirectManager->logRedirection($ID, $targetPage, $redirectSource);
 
-        // Explode the page ID and the anchor (#)
-        $link = explode('#', $targetPage, 2);
+        $this->storeRedirectInCookie($ID, $redirectSource);
 
-        // Query String to pass the message
-        $urlParams = array(
-            self::QUERY_STRING_ORIGIN_PAGE => $ID,
-            self::QUERY_STRING_REDIR_TYPE => $redirectSource
-        );
+        // Change the id
+        global $ID;
+        $ID = $targetPage;
+        // Change the info id for the sidebar
+        $INFO['id'] = $targetPage;
 
-        // TODO: Status code
-        // header('HTTP/1.1 301 Moved Permanently') will cache it in the browser !!!
-
-        $wl = wl($link[0], $urlParams, true, '&');
-        if ($link[1]) {
-            $wl .= '#' . rawurlencode($link[1]);
-        }
-        send_redirect($wl);
 
     }
 
     /**
-     * Redirect to an internal page, no external resources
-     * @param string $url target page id or an URL
+     * An HTTP Redirect to an internal page, no external resources
+     * @param string $target - a dokuwiki id or an url
+     * @param $targetOrigin - the origin of the target
      */
-    private function redirectToExternalPage($url)
+    private
+    function httpRedirect($target, $targetOrigin)
     {
 
         global $ID;
@@ -502,11 +516,36 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
         // No message can be shown because this is an external URL
 
         // Update the redirections
-        $this->redirectManager->logRedirection($ID, $url, self::REDIRECT_EXTERNAL);
+        $this->redirectManager->logRedirection($ID, $target, $targetOrigin);
 
-        // TODO: Status code
-        // header('HTTP/1.1 301 Moved Permanently');
-        send_redirect($url);
+        // Cookie
+        $this->storeRedirectInCookie($ID, $targetOrigin);
+
+        // An url ?
+        if ($this->redirectManager->isValidURL($target)) {
+
+            $targetUrl = $target;
+
+        } else {
+
+            // Explode the page ID and the anchor (#)
+            $link = explode('#', $target, 2);
+
+            $targetUrl = wl($link[0], array(), true, '&');
+            if ($link[1]) {
+                $targetUrl .= '#' . rawurlencode($link[1]);
+            }
+
+        }
+
+        /*
+         * The function below send a 302
+         *
+         * FYI: to send a 301
+         * header('HTTP/1.1 301 Moved Permanently');
+         */
+        send_redirect($targetUrl);
+
 
         if (defined('DOKU_UNITTEST')) return; // no exits during unit tests
         exit();
@@ -517,7 +556,8 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
      * @param $id
      * @return array
      */
-    private function getBestPage($id)
+    private
+    function getBestPage($id)
     {
 
         // The return parameters
@@ -576,7 +616,8 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
      * Add the page with the same page name but in an other location
      * @param $pageId
      */
-    private function addToMessagePagesWithSameName($pageId)
+    private
+    function addToMessagePagesWithSameName($pageId)
     {
 
         global $conf;
@@ -628,9 +669,10 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
     }
 
     /**
-     * @param $message
+     * Print a message to show that the user was redirected
      */
-    private function printMessage($message): void
+    private
+    function printMessage(): void
     {
         if ($this->message->getContent() <> "") {
             $pluginInfo = $this->getInfo();
@@ -654,7 +696,8 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
     /**
      * Redirect to the search engine
      */
-    private function redirectToSearchEngine()
+    private
+    function redirectToSearchEngine()
     {
 
         global $ID;
@@ -664,18 +707,31 @@ class action_plugin_404manager extends DokuWiki_Action_Plugin
 
         $urlParams = array(
             "do" => "search",
-            "q" => $query,
-            self::QUERY_STRING_ORIGIN_PAGE => $ID,
-            self::QUERY_STRING_REDIR_TYPE => self::REDIRECT_SEARCH_ENGINE
+            "q" => $query
         );
-
-        // TODO: Status code ?
-        // header('HTTP/1.1 301 Moved Permanently') will cache it in the browser !!!
 
         $url = wl($ID, $urlParams, true, '&');
 
-        send_redirect($url);
+        $this->httpRedirect($url, self::TARGET_ORIGIN_SEARCH_ENGINE);
 
+    }
+
+    /**
+     * Set the redirect in a cookie that will be be read after the redirect
+     * in order to show a message to the user
+     * @param string $id
+     * @param string $redirectSource
+     */
+    private function storeRedirectInCookie(string $id, string $redirectSource)
+    {
+        // Msg via cookie
+        if (!defined('NOSESSION')) {
+            //reopen session, store data and close session again
+            @session_start();
+            $_SESSION[DOKU_COOKIE][self::QUERY_STRING_ORIGIN_PAGE] = $id;
+            $_SESSION[DOKU_COOKIE][self::QUERY_STRING_REDIR_TYPE] = $redirectSource;
+            session_write_close();
+        }
     }
 
 

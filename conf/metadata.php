@@ -1,7 +1,17 @@
 <?php
-$meta['ActionReaderFirst']  = array('multichoice', '_choices' => array('Nothing', 'GoToNsStartPage', 'GoToBestPageName', 'GoToBestNamespace', 'GoToSearchEngine'));
-$meta['ActionReaderSecond'] = array('multichoice', '_choices' => array('Nothing', 'GoToNsStartPage', 'GoToBestPageName', 'GoToBestNamespace', 'GoToSearchEngine'));
-$meta['ActionReaderThird']  = array('multichoice', '_choices' => array('Nothing', 'GoToNsStartPage', 'GoToBestPageName', 'GoToBestNamespace', 'GoToSearchEngine'));
+
+$actionChoices = array('multichoice', '_choices' => array(
+    action_plugin_404manager::NOTHING,
+    action_plugin_404manager::GO_TO_BEST_END_PAGE_NAME,
+    action_plugin_404manager::GO_TO_NS_START_PAGE,
+    action_plugin_404manager::GO_TO_BEST_PAGE_NAME,
+    action_plugin_404manager::GO_TO_BEST_NAMESPACE,
+    action_plugin_404manager::GO_TO_SEARCH_ENGINE
+));
+
+$meta['ActionReaderFirst']  = $actionChoices;
+$meta['ActionReaderSecond'] = $actionChoices;
+$meta['ActionReaderThird']  = $actionChoices;
 $meta['GoToEditMode'] = array('onoff');
 $meta['ShowPageNameIsNotUnique'] = array('onoff');
 $meta['ShowMessageClassic'] = array('onoff');

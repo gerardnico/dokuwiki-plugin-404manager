@@ -95,7 +95,7 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $this->assertEquals($queryKeys['id'], constant_parameters::$PAGE_DOES_NOT_EXIST_NO_REDIRECTION_ID, "The Id of the source page is the asked page");
         $this->assertNotNull($queryKeys['q'], "The query must be not null");
         $this->assertEquals($queryKeys[action_plugin_404manager::QUERY_STRING_ORIGIN_PAGE], constant_parameters::$PAGE_DOES_NOT_EXIST_NO_REDIRECTION_ID, "The 404 id must be present");
-        $this->assertEquals($queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], action_plugin_404manager::REDIRECT_SEARCH_ENGINE, "The redirect type is known");
+        $this->assertEquals($queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], action_plugin_404manager::TARGET_ORIGIN_SEARCH_ENGINE, "The redirect type is known");
 
 
     }
@@ -135,7 +135,7 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $this->assertEquals($queryKeys['id'], constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE, "The Id of the source page is the asked page");
         $this->assertNotNull($queryKeys['q'], "The query must be not null");
         $this->assertEquals($queryKeys[action_plugin_404manager::QUERY_STRING_ORIGIN_PAGE], constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE, "The 404 id must be present");
-        $this->assertEquals($queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], action_plugin_404manager::REDIRECT_SEARCH_ENGINE, "The redirect type is known");
+        $this->assertEquals($queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], action_plugin_404manager::TARGET_ORIGIN_SEARCH_ENGINE, "The redirect type is known");
 
 
     }
@@ -180,7 +180,7 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $this->assertEquals(constant_parameters::$EXPLICIT_REDIRECT_PAGE_TARGET, $queryKeys['id'], "The Id of the page is the target page");
 
         $this->assertEquals(constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE, $queryKeys[action_plugin_404manager::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
-        $this->assertEquals(action_plugin_404manager::REDIRECT_TARGET_PAGE_FROM_DATASTORE, $queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
+        $this->assertEquals(action_plugin_404manager::TARGET_ORIGIN_DATA_STORE, $queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
 
 
     }
@@ -227,7 +227,7 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $this->assertNull($queryKeys['do'], "The page has no action than show");
         $this->assertEquals(constant_parameters::$REDIRECT_BEST_PAGE_NAME_TARGET_SAME_BRANCH, $queryKeys['id'], "The Id of the source page is the asked page");
         $this->assertEquals(constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE, $queryKeys[action_plugin_404manager::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
-        $this->assertEquals(action_plugin_404manager::REDIRECT_SOURCE_BEST_PAGE_NAME, $queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
+        $this->assertEquals(action_plugin_404manager::TARGET_ORIGIN_BEST_PAGE_NAME, $queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
 
 
     }
@@ -279,7 +279,7 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $this->assertNull($queryKeys['do'], "The is only shown");
         $this->assertEquals(constant_parameters::$REDIRECT_BEST_PAGE_NAME_TARGET_SAME_BRANCH, $queryKeys['id'], "The Id of the source page is the asked page");
         $this->assertEquals(constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE, $queryKeys[action_plugin_404manager::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
-        $this->assertEquals(action_plugin_404manager::REDIRECT_SOURCE_BEST_PAGE_NAME, $queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
+        $this->assertEquals(action_plugin_404manager::TARGET_ORIGIN_BEST_PAGE_NAME, $queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
 
 
     }
@@ -335,7 +335,7 @@ class manager_plugin_404manager_test extends DokuWikiTest
 
         // 404 Params
         $this->assertEquals(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_SOURCE, $queryKeys[action_plugin_404manager::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
-        $this->assertEquals(action_plugin_404manager::REDIRECT_SOURCE_BEST_NAMESPACE, $queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
+        $this->assertEquals(action_plugin_404manager::TARGET_ORIGIN_BEST_NAMESPACE, $queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
 
 
     }
@@ -395,7 +395,7 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $this->assertNotEquals(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_BAD_TARGET, $queryKeys['id'], "The Id is not the source page");
 
         $this->assertEquals(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_SOURCE, $queryKeys[action_plugin_404manager::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
-        $this->assertEquals(action_plugin_404manager::REDIRECT_SOURCE_BEST_PAGE_NAME, $queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
+        $this->assertEquals(action_plugin_404manager::TARGET_ORIGIN_BEST_PAGE_NAME, $queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
 
 
     }
