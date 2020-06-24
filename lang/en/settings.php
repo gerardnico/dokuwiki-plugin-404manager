@@ -18,4 +18,7 @@ $lang['WeightFactorForSamePageName'] = 'Weight factor for same page name to calc
 $lang['WeightFactorForStartPage'] = 'Weight factor for same start page to calculate the score for the best page.';
 $lang['WeightFactorForSameNamespace'] = 'Weight factor for same namespace to calculate the score for the best page.';
 
+$lang[action_plugin_404manager_canonical::CANONICAL_ENABLED_CONF]="If checked, the canonical methodology will be applied";
+$lang[action_plugin_404manager_canonical::CANONICAL_LAST_NAMES_COUNT_CONF]="The number of last part of a Dokuwiki Id to use as a canonical id (0 to disable)";
+
 ?>

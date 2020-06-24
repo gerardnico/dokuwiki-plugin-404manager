@@ -7,8 +7,8 @@
  *
  */
 require_once(__DIR__ . '/constant_parameters.php');
-require_once(__DIR__ . '/../action.php');
-
+require_once(__DIR__ . '/../class/url.redirection.php');
+require_once(__DIR__ . '/../action/url_manager.php');
 class manager_plugin_404manager_test extends DokuWikiTest
 {
 
@@ -24,8 +24,8 @@ class manager_plugin_404manager_test extends DokuWikiTest
     {
         return array(
             array(null),
-            array(admin_plugin_404manager::DATA_STORE_TYPE_CONF_FILE),
-            array(admin_plugin_404manager::DATA_STORE_TYPE_SQLITE)
+            array(UrlRedirection::DATA_STORE_TYPE_CONF_FILE),
+            array(UrlRedirection::DATA_STORE_TYPE_SQLITE)
         );
     }
 
@@ -40,7 +40,7 @@ class manager_plugin_404manager_test extends DokuWikiTest
     public function test_externalRedirect($dataStoreType)
     {
 
-        $redirectManager = admin_plugin_404manager::get()
+        $redirectManager = UrlRedirection::get()
             ->setDataStoreType($dataStoreType);
 
         if ($redirectManager->isRedirectionPresent(constant_parameters::$PAGE_REDIRECTED_TO_EXTERNAL_WEBSITE)) {
@@ -73,10 +73,10 @@ class manager_plugin_404manager_test extends DokuWikiTest
     public function test_internalRedirectToSearchEngine($dataStoreType)
     {
 
-        admin_plugin_404manager::get()->setDataStoreType($dataStoreType);
+        UrlRedirection::get()->setDataStoreType($dataStoreType);
 
         global $conf;
-        $conf ['plugin'][constant_parameters::$PLUGIN_BASE]['ActionReaderFirst'] = action_plugin_404manager::GO_TO_SEARCH_ENGINE;
+        $conf ['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['ActionReaderFirst'] = action_plugin_404manager_url::GO_TO_SEARCH_ENGINE;
 
         global $AUTH_ACL;
         $aclReadOnlyFile = constant_parameters::$DIR_RESOURCES . '/acl.auth.read_only.php';
@@ -94,8 +94,8 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $this->assertEquals($queryKeys['do'], 'search', "The page was redirected to the search page");
         $this->assertEquals($queryKeys['id'], constant_parameters::$PAGE_DOES_NOT_EXIST_NO_REDIRECTION_ID, "The Id of the source page is the asked page");
         $this->assertNotNull($queryKeys['q'], "The query must be not null");
-        $this->assertEquals($queryKeys[action_plugin_404manager::QUERY_STRING_ORIGIN_PAGE], constant_parameters::$PAGE_DOES_NOT_EXIST_NO_REDIRECTION_ID, "The 404 id must be present");
-        $this->assertEquals($queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], action_plugin_404manager::TARGET_ORIGIN_SEARCH_ENGINE, "The redirect type is known");
+        $this->assertEquals($queryKeys[UrlRedirection::QUERY_STRING_ORIGIN_PAGE], constant_parameters::$PAGE_DOES_NOT_EXIST_NO_REDIRECTION_ID, "The 404 id must be present");
+        $this->assertEquals($queryKeys[UrlRedirection::QUERY_STRING_REDIR_TYPE], UrlRedirection::TARGET_ORIGIN_SEARCH_ENGINE, "The redirect type is known");
 
 
     }
@@ -110,9 +110,9 @@ class manager_plugin_404manager_test extends DokuWikiTest
     public function test_goToSearchEngineBasic($dataStoreType)
     {
 
-        $conf ['plugin'][constant_parameters::$PLUGIN_BASE]['ActionReaderFirst'] = action_plugin_404manager::GO_TO_SEARCH_ENGINE;
+        $conf ['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['ActionReaderFirst'] = action_plugin_404manager_url::GO_TO_SEARCH_ENGINE;
 
-        $redirectManager = admin_plugin_404manager::get()->setDataStoreType($dataStoreType);
+        $redirectManager = UrlRedirection::get()->setDataStoreType($dataStoreType);
         if ($redirectManager->isRedirectionPresent(constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE)) {
             $redirectManager->deleteRedirection(constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE);
         }
@@ -134,8 +134,8 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $this->assertEquals($queryKeys['do'], 'search', "The page was redirected to the search page");
         $this->assertEquals($queryKeys['id'], constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE, "The Id of the source page is the asked page");
         $this->assertNotNull($queryKeys['q'], "The query must be not null");
-        $this->assertEquals($queryKeys[action_plugin_404manager::QUERY_STRING_ORIGIN_PAGE], constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE, "The 404 id must be present");
-        $this->assertEquals($queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], action_plugin_404manager::TARGET_ORIGIN_SEARCH_ENGINE, "The redirect type is known");
+        $this->assertEquals($queryKeys[UrlRedirection::QUERY_STRING_ORIGIN_PAGE], constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE, "The 404 id must be present");
+        $this->assertEquals($queryKeys[UrlRedirection::QUERY_STRING_REDIR_TYPE], UrlRedirection::TARGET_ORIGIN_SEARCH_ENGINE, "The redirect type is known");
 
 
     }
@@ -150,7 +150,7 @@ class manager_plugin_404manager_test extends DokuWikiTest
     {
 
 
-        $redirectManager = admin_plugin_404manager::get()->setDataStoreType($dataStoreType);
+        $redirectManager = UrlRedirection::get()->setDataStoreType($dataStoreType);
         if ($redirectManager->isRedirectionPresent(constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE)) {
             $redirectManager->deleteRedirection(constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE);
         }
@@ -159,7 +159,7 @@ class manager_plugin_404manager_test extends DokuWikiTest
         // Create the target Page
         saveWikiText(constant_parameters::$EXPLICIT_REDIRECT_PAGE_TARGET, 'EXPLICIT_REDIRECT_PAGE_TARGET', 'Test initialization');
 
-        $conf ['plugin'][constant_parameters::$PLUGIN_BASE]['ActionReaderFirst'] = action_plugin_404manager::GO_TO_SEARCH_ENGINE;
+        $conf ['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['ActionReaderFirst'] = action_plugin_404manager_url::GO_TO_SEARCH_ENGINE;
 
         // Read only otherwise, you go in edit mode
         global $AUTH_ACL;
@@ -179,8 +179,8 @@ class manager_plugin_404manager_test extends DokuWikiTest
 
         $this->assertEquals(constant_parameters::$EXPLICIT_REDIRECT_PAGE_TARGET, $queryKeys['id'], "The Id of the page is the target page");
 
-        $this->assertEquals(constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE, $queryKeys[action_plugin_404manager::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
-        $this->assertEquals(action_plugin_404manager::TARGET_ORIGIN_DATA_STORE, $queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
+        $this->assertEquals(constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE, $queryKeys[UrlRedirection::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
+        $this->assertEquals(UrlRedirection::TARGET_ORIGIN_DATA_STORE, $queryKeys[UrlRedirection::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
 
 
     }
@@ -194,7 +194,7 @@ class manager_plugin_404manager_test extends DokuWikiTest
     public function test_internalRedirectToBestNamePageSameBranch($dataStoreType)
     {
 
-        $redirectManager = admin_plugin_404manager::get()->setDataStoreType($dataStoreType);
+        $redirectManager = UrlRedirection::get()->setDataStoreType($dataStoreType);
         if ($redirectManager->isRedirectionPresent(constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE)) {
             $redirectManager->deleteRedirection(constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE);
         }
@@ -211,10 +211,10 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $AUTH_ACL = file($aclReadOnlyFile);
 
         global $conf;
-        $conf ['plugin'][constant_parameters::$PLUGIN_BASE]['ActionReaderFirst'] = action_plugin_404manager::GO_TO_BEST_PAGE_NAME;
-        $conf['plugin'][constant_parameters::$PLUGIN_BASE]['WeightFactorForSamePageName'] = 4;
-        $conf['plugin'][constant_parameters::$PLUGIN_BASE]['WeightFactorForStartPage'] = 3;
-        $conf['plugin'][constant_parameters::$PLUGIN_BASE]['WeightFactorForSameNamespace'] = 5;
+        $conf ['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['ActionReaderFirst'] = action_plugin_404manager_url::GO_TO_BEST_PAGE_NAME;
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForSamePageName'] = 4;
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForStartPage'] = 3;
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForSameNamespace'] = 5;
 
         $request = new TestRequest();
         $request->get(array('id' => constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE), '/doku.php');
@@ -226,8 +226,8 @@ class manager_plugin_404manager_test extends DokuWikiTest
         parse_str($components['query'], $queryKeys);
         $this->assertNull($queryKeys['do'], "The page has no action than show");
         $this->assertEquals(constant_parameters::$REDIRECT_BEST_PAGE_NAME_TARGET_SAME_BRANCH, $queryKeys['id'], "The Id of the source page is the asked page");
-        $this->assertEquals(constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE, $queryKeys[action_plugin_404manager::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
-        $this->assertEquals(action_plugin_404manager::TARGET_ORIGIN_BEST_PAGE_NAME, $queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
+        $this->assertEquals(constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE, $queryKeys[UrlRedirection::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
+        $this->assertEquals(UrlRedirection::TARGET_ORIGIN_BEST_PAGE_NAME, $queryKeys[UrlRedirection::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
 
 
     }
@@ -243,7 +243,7 @@ class manager_plugin_404manager_test extends DokuWikiTest
     {
 
 
-        $redirectManager = admin_plugin_404manager::get()->setDataStoreType($dataStoreType);
+        $redirectManager = UrlRedirection::get()->setDataStoreType($dataStoreType);
         if ($redirectManager->isRedirectionPresent(constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE)) {
             $redirectManager->deleteRedirection(constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE);
         }
@@ -262,10 +262,10 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $AUTH_ACL = file($aclReadOnlyFile);
 
         global $conf;
-        $conf['plugin'][constant_parameters::$PLUGIN_BASE]['ActionReaderFirst'] = action_plugin_404manager::GO_TO_BEST_PAGE_NAME;
-        $conf['plugin'][constant_parameters::$PLUGIN_BASE]['WeightFactorForSamePageName'] = 4;
-        $conf['plugin'][constant_parameters::$PLUGIN_BASE]['WeightFactorForStartPage'] = 3;
-        $conf['plugin'][constant_parameters::$PLUGIN_BASE]['WeightFactorForSameNamespace'] = 5;
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['ActionReaderFirst'] = action_plugin_404manager_url::GO_TO_BEST_PAGE_NAME;
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForSamePageName'] = 4;
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForStartPage'] = 3;
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForSameNamespace'] = 5;
 
         $request = new TestRequest();
         $request->get(array('id' => constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE), '/doku.php');
@@ -278,8 +278,8 @@ class manager_plugin_404manager_test extends DokuWikiTest
 
         $this->assertNull($queryKeys['do'], "The is only shown");
         $this->assertEquals(constant_parameters::$REDIRECT_BEST_PAGE_NAME_TARGET_SAME_BRANCH, $queryKeys['id'], "The Id of the source page is the asked page");
-        $this->assertEquals(constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE, $queryKeys[action_plugin_404manager::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
-        $this->assertEquals(action_plugin_404manager::TARGET_ORIGIN_BEST_PAGE_NAME, $queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
+        $this->assertEquals(constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE, $queryKeys[UrlRedirection::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
+        $this->assertEquals(UrlRedirection::TARGET_ORIGIN_BEST_PAGE_NAME, $queryKeys[UrlRedirection::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
 
 
     }
@@ -294,7 +294,7 @@ class manager_plugin_404manager_test extends DokuWikiTest
     {
 
 
-        $redirectManager = admin_plugin_404manager::get()->setDataStoreType($dataStoreType);
+        $redirectManager = UrlRedirection::get()->setDataStoreType($dataStoreType);
         if ($redirectManager->isRedirectionPresent(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_SOURCE)) {
             $redirectManager->deleteRedirection(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_SOURCE);
         }
@@ -311,11 +311,11 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $AUTH_ACL = file($aclReadOnlyFile);
 
         global $conf;
-        $conf['plugin'][constant_parameters::$PLUGIN_BASE]['ActionReaderFirst'] = action_plugin_404manager::GO_TO_BEST_NAMESPACE;
-        $conf['plugin'][constant_parameters::$PLUGIN_BASE]['WeightFactorForSamePageName'] = 4;
-        $conf['plugin'][constant_parameters::$PLUGIN_BASE]['WeightFactorForStartPage'] = 3;
-        $conf['plugin'][constant_parameters::$PLUGIN_BASE]['WeightFactorForSameNamespace'] = 5;
-        $conf['plugin'][constant_parameters::$PLUGIN_BASE]['WordsSeparator'] = ':';
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['ActionReaderFirst'] = action_plugin_404manager_url::GO_TO_BEST_NAMESPACE;
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForSamePageName'] = 4;
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForStartPage'] = 3;
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForSameNamespace'] = 5;
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WordsSeparator'] = ':';
 
         $request = new TestRequest();
         $request->get(array('id' => constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_SOURCE), '/doku.php');
@@ -334,8 +334,8 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $this->assertNotEquals(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_BAD_TARGET, $queryKeys['id'], "The Id of the source page is the asked page");
 
         // 404 Params
-        $this->assertEquals(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_SOURCE, $queryKeys[action_plugin_404manager::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
-        $this->assertEquals(action_plugin_404manager::TARGET_ORIGIN_BEST_NAMESPACE, $queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
+        $this->assertEquals(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_SOURCE, $queryKeys[UrlRedirection::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
+        $this->assertEquals(UrlRedirection::TARGET_ORIGIN_BEST_NAMESPACE, $queryKeys[UrlRedirection::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
 
 
     }
@@ -352,7 +352,7 @@ class manager_plugin_404manager_test extends DokuWikiTest
     {
 
 
-        $redirectManager = admin_plugin_404manager::get()->setDataStoreType($dataStoreType);
+        $redirectManager = UrlRedirection::get()->setDataStoreType($dataStoreType);
         if ($redirectManager->isRedirectionPresent(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_SOURCE)) {
             $redirectManager->deleteRedirection(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_SOURCE);
         }
@@ -370,12 +370,12 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $AUTH_ACL = file($aclReadOnlyFile);
 
         global $conf;
-        $conf['plugin'][constant_parameters::$PLUGIN_BASE]['ActionReaderFirst'] = action_plugin_404manager::GO_TO_BEST_PAGE_NAME;
-        $conf['plugin'][constant_parameters::$PLUGIN_BASE]['WeightFactorForSamePageName'] = 4;
-        $conf['plugin'][constant_parameters::$PLUGIN_BASE]['WeightFactorForStartPage'] = 3;
-        $conf['plugin'][constant_parameters::$PLUGIN_BASE]['WeightFactorForSameNamespace'] = 5;
-        $conf['plugin'][constant_parameters::$PLUGIN_BASE]['WordsSeparator'] = ':';
-        $conf['plugin'][constant_parameters::$PLUGIN_BASE]['ShowPageNameIsNotUnique'] = 1;
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['ActionReaderFirst'] = action_plugin_404manager_url::GO_TO_BEST_PAGE_NAME;
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForSamePageName'] = 4;
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForStartPage'] = 3;
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForSameNamespace'] = 5;
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WordsSeparator'] = ':';
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['ShowPageNameIsNotUnique'] = 1;
 
         $request = new TestRequest();
         $request->get(array('id' => constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_SOURCE), '/doku.php');
@@ -394,8 +394,8 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $this->assertEquals(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_GOOD_TARGET, $queryKeys['id'], "The Id is the target page");
         $this->assertNotEquals(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_BAD_TARGET, $queryKeys['id'], "The Id is not the source page");
 
-        $this->assertEquals(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_SOURCE, $queryKeys[action_plugin_404manager::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
-        $this->assertEquals(action_plugin_404manager::TARGET_ORIGIN_BEST_PAGE_NAME, $queryKeys[action_plugin_404manager::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
+        $this->assertEquals(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_SOURCE, $queryKeys[UrlRedirection::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
+        $this->assertEquals(UrlRedirection::TARGET_ORIGIN_BEST_PAGE_NAME, $queryKeys[UrlRedirection::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
 
 
     }
@@ -411,8 +411,8 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $targetPage = 'testRedirectionsOperations:test';
         saveWikiText($targetPage, 'Test ', 'but without any common name (namespace) in the path');
         idx_addPage($targetPage);
-        /** @var admin_plugin_404manager $redirectManager */
-        $redirectManager = admin_plugin_404manager::get()
+        /** @var UrlRedirection $redirectManager */
+        $redirectManager = UrlRedirection::get()
             ->setDataStoreType($dataStoreType);
 
 
@@ -441,17 +441,17 @@ class manager_plugin_404manager_test extends DokuWikiTest
         idx_addPage($targetPage);
 
         // Cleaning
-        /** @var admin_plugin_404manager $redirectManager */
-        $redirectManager = admin_plugin_404manager::get()
-            ->setDataStoreType(admin_plugin_404manager::DATA_STORE_TYPE_SQLITE);
+        /** @var UrlRedirection $redirectManager */
+        $redirectManager = UrlRedirection::get()
+            ->setDataStoreType(UrlRedirection::DATA_STORE_TYPE_SQLITE);
         $redirectManager->deleteAllRedirections();
-        $filenameMigrated = admin_plugin_404manager::DATA_STORE_CONF_FILE_PATH . '.migrated';
+        $filenameMigrated = UrlRedirection::DATA_STORE_CONF_FILE_PATH . '.migrated';
         if (file_exists($filenameMigrated)){
             unlink($filenameMigrated);
         }
 
         // Create a conf file
-        $redirectManager->setDataStoreType(admin_plugin_404manager::DATA_STORE_TYPE_CONF_FILE);
+        $redirectManager->setDataStoreType(UrlRedirection::DATA_STORE_TYPE_CONF_FILE);
         $redirectManager->deleteAllRedirections();
         $sourcePageIdValidated = "doesNotExistValidateRedirections";
         $redirectManager->addRedirection($sourcePageIdValidated, $targetPage);
@@ -462,15 +462,15 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $count = $redirectManager->countRedirections();
         $this->assertEquals(2, $count, "The number of redirection is 2 in the conf file");
 
-        $this->assertEquals(true, file_exists(admin_plugin_404manager::DATA_STORE_CONF_FILE_PATH), "The file was created");
+        $this->assertEquals(true, file_exists(UrlRedirection::DATA_STORE_CONF_FILE_PATH), "The file was created");
 
         // Settings the store will trigger the migration
-        $redirectManager->setDataStoreType(admin_plugin_404manager::DATA_STORE_TYPE_SQLITE);
+        $redirectManager->setDataStoreType(UrlRedirection::DATA_STORE_TYPE_SQLITE);
 
         $count = $redirectManager->countRedirections();
         $this->assertEquals(1, $count, "The number of redirection is 1");
 
-        $this->assertEquals(false, file_exists(admin_plugin_404manager::DATA_STORE_CONF_FILE_PATH), "The file does not exist anymore");
+        $this->assertEquals(false, file_exists(UrlRedirection::DATA_STORE_CONF_FILE_PATH), "The file does not exist anymore");
         $this->assertEquals(true, file_exists($filenameMigrated), "The file migrated exist");
 
 

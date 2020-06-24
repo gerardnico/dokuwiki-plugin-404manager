@@ -6,9 +6,8 @@
  * @group plugins
  *
  */
-require_once(__DIR__ . '/constant_parameters.php');
-require_once(__DIR__ . '/../action.php');
 
+require_once(__DIR__ . '/../class/url.canonical.php');
 class canonical_plugin_404manager_test extends DokuWikiTest
 {
 
@@ -17,50 +16,31 @@ class canonical_plugin_404manager_test extends DokuWikiTest
 
 
     /**
-     * A data provider to create parametrized test
-     * @return array
-     */
-    public function providerDataStoreTypeData()
-    {
-        return array(
-            array(null),
-            array(admin_plugin_404manager::DATA_STORE_TYPE_CONF_FILE),
-            array(admin_plugin_404manager::DATA_STORE_TYPE_SQLITE)
-        );
-    }
-
-
-    /**
      * Test a redirect to an external Web Site
      *
-     * @dataProvider providerDataStoreTypeData
-     * @param $dataStoreType
      * @throws Exception
      */
-    public function test_canonical($dataStoreType)
+    public function test_canonical()
     {
 
-        $redirectManager = admin_plugin_404manager::get()
-            ->setDataStoreType($dataStoreType);
+        $urlCanonicalManager = UrlCanonical::get();
 
         // Data
         $pageId = "web:javascript:variable";
-        $newPageId="lang:javascript:variable";
+        $newPageId = "lang:javascript:variable";
         $pageCanonical = "javascript:variable";
 
 
         // Reproducible test
-        if ($redirectManager->pageExist($pageId)) {
-            $redirectManager->deletePage($pageId);
+        if ($urlCanonicalManager->pageExist($pageId)) {
+            $urlCanonicalManager->deletePage($pageId);
         }
 
-        if ($redirectManager->pageExist($newPageId)) {
-            $redirectManager->deletePage($newPageId);
+        if ($urlCanonicalManager->pageExist($newPageId)) {
+            $urlCanonicalManager->deletePage($newPageId);
         }
 
-        if ($dataStoreType == admin_plugin_404manager::DATA_STORE_TYPE_SQLITE) {
-            $this->assertEquals($redirectManager->pageExist($pageId), 0, "The page was deleted");
-        }
+        $this->assertEquals($urlCanonicalManager->pageExist($pageId), 0, "The page was deleted");
 
         // Save a page
         $text = DOKU_LF . '---json' . DOKU_LF
@@ -76,12 +56,11 @@ class canonical_plugin_404manager_test extends DokuWikiTest
         $request->get(array('id' => $pageId), '/doku.php');
         $request->execute();
 
-        if ($dataStoreType == admin_plugin_404manager::DATA_STORE_TYPE_SQLITE) {
-            $this->assertEquals($redirectManager->pageExist($pageId), 1, "The page was added");
-        }
+        $this->assertEquals($urlCanonicalManager->pageExist($pageId), 1, "The page was added");
 
         // Page move
         saveWikiText($pageId, "", 'Page deletion');
+        $this->assertEquals(false, page_exists($pageId), "The old page does not exist on disk");
         saveWikiText($newPageId, $text, 'Page creation');
 
         // A request
@@ -89,16 +68,80 @@ class canonical_plugin_404manager_test extends DokuWikiTest
         $request->get(array('id' => $newPageId), '/doku.php');
         $request->execute();
 
-        if ($dataStoreType == admin_plugin_404manager::DATA_STORE_TYPE_SQLITE) {
-            $this->assertEquals(0, $redirectManager->pageExist($pageId), "The old page does not exist");
-            $this->assertEquals(1, $redirectManager->pageExist($newPageId), "The new page exist");
-            $pageRow = $redirectManager->getPage($newPageId);
-            $this->assertEquals($pageCanonical, $pageRow[0]['CANONICAL'], "The canonical is the same");
-        }
+        $this->assertEquals(0, $urlCanonicalManager->pageExist($pageId), "The old page does not exist in db");
+        $this->assertEquals(1, $urlCanonicalManager->pageExist($newPageId), "The new page exist");
+        $pageRow = $urlCanonicalManager->getPage($newPageId);
+        $this->assertEquals($pageCanonical, $pageRow[0]['CANONICAL'], "The canonical is the same");
+
+
+        // In a request
+        $request = new TestRequest();
+        $request->get(array('id' => $pageId), '/doku.php');
+        $response = $request->execute();
+
 
         // One assertion is needed for the other type of data store
         $this->assertEquals(true, true);
 
+
+    }
+
+    /**
+     * Test the canonical
+     * Actually it just add the og
+     * When the rendering of the canonical value will be supported by
+     * 404 manager, we can switch
+     * TODO: move this to 404 manager ?
+     */
+    public function test_canonical_meta()
+    {
+
+        $metaKey = syntax_plugin_webcomponent_frontmatter::CANONICAL_PROPERTY;
+        $pageId = 'description:test';
+        $canonicalValue = "javascript:variable";
+        $text = DOKU_LF . '---json' . DOKU_LF
+            . '{' . DOKU_LF
+            . '   "' . $metaKey . '":"' . $canonicalValue . '"' . DOKU_LF
+            . '}' . DOKU_LF
+            . '---' . DOKU_LF
+            . 'Content';
+        saveWikiText($pageId, $text, 'Created');
+
+        $canonicalMeta = p_get_metadata($pageId, $metaKey, METADATA_RENDER_UNLIMITED);
+        self::assertEquals($canonicalValue, $canonicalMeta);
+
+        // It should never occur but yeah
+        $canonicalValue = "js:variable";
+        $text = DOKU_LF . '---json' . DOKU_LF
+            . '{' . DOKU_LF
+            . '   "' . $metaKey . '":"' . $canonicalValue . '"' . DOKU_LF
+            . '}' . DOKU_LF
+            . '---' . DOKU_LF
+            . 'Content';
+        saveWikiText($pageId, $text, 'Updated meta');
+        $canonicalMeta = p_get_metadata($pageId, $metaKey, METADATA_RENDER_UNLIMITED);
+        self::assertEquals($canonicalValue, $canonicalMeta);
+
+        // Do we have the description in the meta
+        $request = new TestRequest(); // initialize the request
+        $response = $request->get(array('id' => $pageId), '/doku.php');
+
+        /**
+         * The domain for the test is set in the variable {@link $default_server_vars}
+         * see the property SERVER_NAME (in the file _test/bootstrap.php)
+         */
+        $domain = "http://wiki.example.com/";
+        $dokuCanonicalValue = $pageId; // Actually
+        $canonicalPath = strtr($dokuCanonicalValue, ":", "/");
+        $baseDir = "./"; # There is no way to change this configuration before
+        $expectedCanonicalValue = $domain . $baseDir . $canonicalPath;
+
+        // Query
+        $canonicalHrefLink = $response->queryHTML('link[rel="' . $metaKey . '"]')->attr('href');
+        $this->assertEquals($expectedCanonicalValue, $canonicalHrefLink, "The link canonical meta should be good");
+        // Facebook: https://developers.facebook.com/docs/sharing/webmasters/getting-started/versioned-link/
+        $canonicalHrefMetaOg = $response->queryHTML('meta[property="og:url"]')->attr('content');
+        $this->assertEquals($expectedCanonicalValue, $canonicalHrefMetaOg, "The meta canonical property should be good");
 
     }
 

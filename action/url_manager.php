@@ -7,7 +7,14 @@ require_once(DOKU_INC . 'inc/fulltext.php');
 // Needed to get the redirection manager
 require_once(DOKU_PLUGIN . 'action.php');
 
-class action_plugin_404manager extends DokuWiki_Action_Plugin
+/**
+ * Class action_plugin_404manager_url
+ *
+ * The actual URL manager
+ *
+ *
+ */
+class action_plugin_404manager_url extends DokuWiki_Action_Plugin
 {
 
 

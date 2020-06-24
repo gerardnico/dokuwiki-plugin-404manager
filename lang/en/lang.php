@@ -34,6 +34,8 @@ $lang['Direct Access'] = 'Direct Access';
 $lang['TargetPageType'] = 'Target Page Type';
 $lang['CountOfRedirection'] = 'Count Of Redirection';
 
+
+
 // Head Titles
 $lang['AddModifyRedirection'] = "Add/Modify Redirection";
 $lang['ListOfRedirection'] = 'List of Redirections';

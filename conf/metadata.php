@@ -18,4 +18,6 @@ $meta['ShowMessageClassic'] = array('onoff');
 $meta['WeightFactorForSamePageName'] = array('string');
 $meta['WeightFactorForStartPage'] = array('string');
 $meta['WeightFactorForSameNamespace'] = array('string');
+
+$meta[] = array('onoff');
 ?>

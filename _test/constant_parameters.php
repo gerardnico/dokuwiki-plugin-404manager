@@ -50,11 +50,8 @@ class constant_parameters
 
     static function init()
     {
-        $pluginInfoFile = __DIR__ . '/../plugin.info.txt';
-        self::$DIR_RESOURCES = __DIR__ . '/../_testResources';
 
-        self::$INFO_PLUGIN = confToHash($pluginInfoFile);
-        self::$PLUGIN_BASE = self::$INFO_PLUGIN['base'];
+        self::$DIR_RESOURCES = __DIR__ . '/../_testResources';
 
         self::$MANAGER404_NAMESPACE = self::$INFO_PLUGIN['base'];
 
