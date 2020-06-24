@@ -71,8 +71,6 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
             '_handle404',
             array());
 
-
-
     }
 
     /**
@@ -88,6 +86,7 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
 
         global $INFO;
         if ($INFO['exists']) {
+            action_plugin_404manager_message::unsetNotification();
             // Check if there is a canonical meta
             UrlCanonical::get()->processCanonicalMeta();
             return false;

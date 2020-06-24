@@ -48,13 +48,13 @@ class action_plugin_404manager_message extends DokuWiki_Action_Plugin
     private static function sessionStart()
     {
         $sessionStatus = session_status();
-        switch ($sessionStatus){
+        switch ($sessionStatus) {
             case PHP_SESSION_DISABLED:
                 throw new RuntimeException("Sessions are disabled");
                 break;
             case PHP_SESSION_NONE:
                 $result = @session_start();
-                if(!$result){
+                if (!$result) {
                     throw new RuntimeException("The session was not successfully started");
                 }
                 break;
@@ -79,7 +79,6 @@ class action_plugin_404manager_message extends DokuWiki_Action_Plugin
     }
 
 
-
     /**
      * Main function; dispatches the visual comment actions
      * @param   $event Doku_Event
@@ -89,57 +88,54 @@ class action_plugin_404manager_message extends DokuWiki_Action_Plugin
 
         // Message
         $message = new Message404();
-        
-        if (!defined('NOSESSION')) {
-            
-            list($pageIdOrigin,$redirectSource) = self::getNotification();
 
+        list($pageIdOrigin, $redirectSource) = self::getNotification();
 
-            if ($pageIdOrigin) {
+        if ($pageIdOrigin) {
 
-                switch ($redirectSource) {
+            switch ($redirectSource) {
 
-                    case action_plugin_404manager_urlmanager::TARGET_ORIGIN_DATA_STORE:
-                        $message->addContent(sprintf($this->lang['message_redirected_by_redirect'], hsc($pageIdOrigin)));
-                        $message->setType(Message404::TYPE_CLASSIC);
-                        break;
+                case action_plugin_404manager_urlmanager::TARGET_ORIGIN_DATA_STORE:
+                    $message->addContent(sprintf($this->lang['message_redirected_by_redirect'], hsc($pageIdOrigin)));
+                    $message->setType(Message404::TYPE_CLASSIC);
+                    break;
 
-                    case action_plugin_404manager_urlmanager::TARGET_ORIGIN_START_PAGE:
-                        $message->addContent(sprintf($this->lang['message_redirected_to_startpage'], hsc($pageIdOrigin)));
-                        $message->setType(Message404::TYPE_WARNING);
-                        break;
+                case action_plugin_404manager_urlmanager::TARGET_ORIGIN_START_PAGE:
+                    $message->addContent(sprintf($this->lang['message_redirected_to_startpage'], hsc($pageIdOrigin)));
+                    $message->setType(Message404::TYPE_WARNING);
+                    break;
 
-                    case  action_plugin_404manager_urlmanager::TARGET_ORIGIN_BEST_PAGE_NAME:
-                        $message->addContent(sprintf($this->lang['message_redirected_to_bestpagename'], hsc($pageIdOrigin)));
-                        $message->setType(Message404::TYPE_WARNING);
-                        break;
+                case  action_plugin_404manager_urlmanager::TARGET_ORIGIN_BEST_PAGE_NAME:
+                    $message->addContent(sprintf($this->lang['message_redirected_to_bestpagename'], hsc($pageIdOrigin)));
+                    $message->setType(Message404::TYPE_WARNING);
+                    break;
 
-                    case action_plugin_404manager_urlmanager::TARGET_ORIGIN_BEST_NAMESPACE:
-                        $message->addContent(sprintf($this->lang['message_redirected_to_bestnamespace'], hsc($pageIdOrigin)));
-                        $message->setType(Message404::TYPE_WARNING);
-                        break;
+                case action_plugin_404manager_urlmanager::TARGET_ORIGIN_BEST_NAMESPACE:
+                    $message->addContent(sprintf($this->lang['message_redirected_to_bestnamespace'], hsc($pageIdOrigin)));
+                    $message->setType(Message404::TYPE_WARNING);
+                    break;
 
-                    case action_plugin_404manager_urlmanager::TARGET_ORIGIN_SEARCH_ENGINE:
-                        $message->addContent(sprintf($this->lang['message_redirected_to_searchengine'], hsc($pageIdOrigin)));
-                        $message->setType(Message404::TYPE_WARNING);
-                        break;
-
-                }
-
-                // Add a list of page with the same name to the message
-                // if the redirections is not planned
-                if ($redirectSource != action_plugin_404manager_urlmanager::TARGET_ORIGIN_DATA_STORE) {
-                    $this->addToMessagePagesWithSameName($message, $pageIdOrigin);
-                }
+                case action_plugin_404manager_urlmanager::TARGET_ORIGIN_SEARCH_ENGINE:
+                    $message->addContent(sprintf($this->lang['message_redirected_to_searchengine'], hsc($pageIdOrigin)));
+                    $message->setType(Message404::TYPE_WARNING);
+                    break;
 
             }
 
-            if ($event->data == 'show' || $event->data == 'edit' || $event->data == 'search') {
-
-                $this->printMessage($message);
-
+            // Add a list of page with the same name to the message
+            // if the redirections is not planned
+            if ($redirectSource != action_plugin_404manager_urlmanager::TARGET_ORIGIN_DATA_STORE) {
+                $this->addToMessagePagesWithSameName($message, $pageIdOrigin);
             }
+
         }
+
+        if ($event->data == 'show' || $event->data == 'edit' || $event->data == 'search') {
+
+            $this->printMessage($message);
+
+        }
+
     }
 
 
@@ -247,6 +243,26 @@ class action_plugin_404manager_message extends DokuWiki_Action_Plugin
     }
 
     /**
+     * You can't unset when rendering because the write
+     * of a session may fail because some data may have already been send
+     * during the rendering process
+     * Unset is done at the start of the 404 manager
+     */
+    static function unsetNotification(){
+
+        // Open session
+        self::sessionStart();
+
+        // Read the data and unset
+        if (isset($_SESSION[DOKU_COOKIE][self::ORIGIN_PAGE])) {
+            unset($_SESSION[DOKU_COOKIE][self::ORIGIN_PAGE]);
+        }
+        if (isset($_SESSION[DOKU_COOKIE][self::ORIGIN_TYPE])) {
+            unset($_SESSION[DOKU_COOKIE][self::ORIGIN_TYPE]);
+        }
+    }
+
+    /**
      * Return notification data or an empty array
      * @return array - of the source id and of the type of redirect if a redirect has occurs otherwise an empty array
      */
@@ -258,21 +274,13 @@ class action_plugin_404manager_message extends DokuWiki_Action_Plugin
             $pageIdOrigin = null;
             $redirectSource = null;
 
-            // Open session
-            self::sessionStart();
-
-
             // Read the data and unset
-            if(isset($_SESSION[DOKU_COOKIE][self::ORIGIN_PAGE])) {
+            if (isset($_SESSION[DOKU_COOKIE][self::ORIGIN_PAGE])) {
                 $pageIdOrigin = $_SESSION[DOKU_COOKIE][self::ORIGIN_PAGE];
-                unset($_SESSION[DOKU_COOKIE][self::ORIGIN_PAGE]);
             }
             if (isset($_SESSION[DOKU_COOKIE][self::ORIGIN_TYPE])) {
                 $redirectSource = $_SESSION[DOKU_COOKIE][self::ORIGIN_TYPE];
-                unset($_SESSION[DOKU_COOKIE][self::ORIGIN_TYPE]);
             }
-
-            self::sessionClose();
 
 
             if ($pageIdOrigin) {
