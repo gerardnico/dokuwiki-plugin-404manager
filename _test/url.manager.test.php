@@ -8,7 +8,7 @@
  *
  */
 require_once(__DIR__ . '/../class/UrlStatic.php');
-require_once(__DIR__ . '/../action/url.manager.php');
+require_once(__DIR__ . '/../action/urlmanager.php');
 require_once(__DIR__ . '/constant_parameters.php');
 class manager_plugin_404manager_test extends DokuWikiTest
 {
@@ -24,7 +24,7 @@ class manager_plugin_404manager_test extends DokuWikiTest
 
 
         global $conf;
-        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['ActionReaderFirst'] = action_plugin_404manager_url::GO_TO_SEARCH_ENGINE;
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['ActionReaderFirst'] = action_plugin_404manager_urlmanager::GO_TO_SEARCH_ENGINE;
 
         global $AUTH_ACL;
         $aclReadOnlyFile = constant_parameters::$DIR_RESOURCES . '/acl.auth.read_only.php';

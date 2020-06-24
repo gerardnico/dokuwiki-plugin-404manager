@@ -51,17 +51,6 @@ class UrlRedirection
     private $sqlite;
 
 
-    /**
-     *
-     *
-     * Use the get function instead
-     */
-    public function __construct()
-    {
-
-        $this->currentDate = date("c");
-
-    }
 
     /**
      * @return UrlRedirection
@@ -330,46 +319,7 @@ class UrlRedirection
         }
     }
 
-    /**
-     *
-     *   * For a conf file, it will update the Redirection Action Data as Referrer, Count Of Redirection, Redirection Date
-     *   * For a SQlite database, it will add a row into the log
-     *
-     * @param string $sourcePageId
-     * @param $targetPageId
-     * @param $targetOrigin
-     */
-    function logRedirection($sourcePageId, $targetPageId, $targetOrigin)
-    {
-        if ($this->dataStoreType == null) {
-            $this->initDataStore();
-        }
 
-        if ($this->dataStoreType == self::DATA_STORE_TYPE_CONF_FILE) {
-
-            $sourcePageId = strtolower($sourcePageId);
-            $this->pageRedirections[$sourcePageId]['LastRedirectionDate'] = $this->currentDate;
-            $this->pageRedirections[$sourcePageId]['LastReferrer'] = $_SERVER['HTTP_REFERER'];
-            // This cause to add one after the first insert but yeah, this is going to dye anyway
-            $this->pageRedirections[$sourcePageId]['CountOfRedirection'] += 1;
-            $this->savePageRedirections();
-
-        } else {
-
-            $row = array(
-                "TIMESTAMP" => $this->currentDate,
-                "SOURCE" => $sourcePageId,
-                "TARGET" => $targetPageId,
-                "REFERRER" => $_SERVER['HTTP_REFERER'],
-                "TYPE" => $targetOrigin
-            );
-            $res = $this->sqlite->storeEntry('redirections_log', $row);
-
-            if (!$res) {
-                throw new RuntimeException("An error occurred");
-            }
-        }
-    }
 
     /**
      * Serialize and save the redirection data file

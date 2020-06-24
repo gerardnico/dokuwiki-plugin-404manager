@@ -11,6 +11,10 @@ class UrlCanonical
      */
     private $sqlite;
 
+    /**
+     * A static object served everywhere when needed
+     * @var UrlCanonical
+     */
     static $urlCanonical;
 
 

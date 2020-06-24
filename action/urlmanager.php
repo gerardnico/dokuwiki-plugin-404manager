@@ -9,6 +9,7 @@ if (!defined('DOKU_PLUGIN')) define('DOKU_PLUGIN', DOKU_INC . 'lib/plugins/');
 
 require_once(__DIR__ . '/../class/UrlRedirection.php');
 require_once(__DIR__ . '/../class/UrlCanonical.php');
+
 /**
  * Class action_plugin_404manager_url
  *
@@ -42,11 +43,6 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
     const GO_TO_EDIT_MODE = 'GoToEditMode';
     const NOTHING = 'Nothing';
 
-    /**
-     * The object that holds all management function
-     * @var admin_plugin_404manager
-     */
-    var $redirectManager;
 
     /*
      * The event scope is made object
@@ -111,13 +107,6 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
     function _handle404(&$event, $param)
     {
 
-        // We instantiate the redirect manager because it's use overall
-        // it holds the function and methods
-        if ($this->redirectManager == null) {
-            $this->redirectManager = UrlRedirection::get();
-        }
-
-
         global $INFO;
         if ($INFO['exists']) {
             // Check if there is a canonical meta
@@ -149,11 +138,11 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
 
 
         // Get the page from redirection data
-        $targetPage = $this->redirectManager->getRedirectionTarget($ID);
+        $targetPage = UrlRedirection::get()->getRedirectionTarget($ID);
 
 
         // If this is an external redirect (other domain)
-        if ($this->redirectManager->isValidURL($targetPage) && $targetPage) {
+        if (UrlStatic::isValidURL($targetPage) && $targetPage) {
 
             $this->httpRedirect($targetPage, self::TARGET_ORIGIN_DATA_STORE);
             return true;
@@ -517,13 +506,13 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
         // No message can be shown because this is an external URL
 
         // Update the redirections
-        $this->redirectManager->logRedirection($ID, $target, $targetOrigin);
+        $this->logRedirection($ID, $target, $targetOrigin);
 
         // Cookie
         $this->storeRedirectInCookie($ID, $targetOrigin);
 
         // An url ?
-        if ($this->redirectManager->isValidURL($target)) {
+        if (UrlStatic::isValidURL($target)) {
 
             $targetUrl = $target;
 
@@ -735,5 +724,32 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
         }
     }
 
+
+    /**
+     *
+     *   * For a conf file, it will update the Redirection Action Data as Referrer, Count Of Redirection, Redirection Date
+     *   * For a SQlite database, it will add a row into the log
+     *
+     * @param string $sourcePageId
+     * @param $targetPageId
+     * @param $targetOrigin
+     */
+    function logRedirection($sourcePageId, $targetPageId, $targetOrigin)
+    {
+
+        $row = array(
+            "TIMESTAMP" => date("c"),
+            "SOURCE" => $sourcePageId,
+            "TARGET" => $targetPageId,
+            "REFERRER" => $_SERVER['HTTP_REFERER'],
+            "TYPE" => $targetOrigin
+        );
+        $res = UrlStatic::getSqlite()->storeEntry('redirections_log', $row);
+
+        if (!$res) {
+            throw new RuntimeException("An error occurred");
+        }
+
+    }
 
 }
