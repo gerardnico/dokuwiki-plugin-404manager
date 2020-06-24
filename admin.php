@@ -315,7 +315,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
 
     /**
      * Delete Redirection
-     * @param    string $sourcePageId
+     * @param string $sourcePageId
      */
     function deleteRedirection($sourcePageId)
     {
@@ -340,7 +340,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
 
     /**
      * Delete Redirection
-     * @param    string $id
+     * @param string $id
      */
     function deletePage($id)
     {
@@ -360,7 +360,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
 
     /**
      * Is Redirection of a page Id Present
-     * @param  string $sourcePageId
+     * @param string $sourcePageId
      * @return int
      */
     function isRedirectionPresent($sourcePageId)
@@ -381,7 +381,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
 
         } else {
 
-            $res = $this->sqlite->query("SELECT * FROM redirections where SOURCE = ?",$sourcePageId);
+            $res = $this->sqlite->query("SELECT * FROM redirections where SOURCE = ?", $sourcePageId);
             return $this->sqlite->res2count($res);
 
         }
@@ -390,7 +390,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
 
     /**
      * Does the page is known in the pages table
-     * @param  string $id
+     * @param string $id
      * @return int
      */
     function pageExist($id)
@@ -403,12 +403,41 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
 
         if ($this->dataStoreType == self::DATA_STORE_TYPE_SQLITE) {
 
-            $res = $this->sqlite->query("SELECT * FROM pages where id = ?", $id );
+            $res = $this->sqlite->query("SELECT * FROM pages where id = ?", $id);
             return $this->sqlite->res2count($res);
 
         } else {
 
             return 0;
+
+        }
+
+    }
+
+    /**
+     * Does the page is known in the pages table
+     * @param string $id
+     * @return array
+     */
+    function getPage($id)
+    {
+        $id = strtolower($id);
+
+        if ($this->dataStoreType == null) {
+            $this->initDataStore();
+        }
+
+        if ($this->dataStoreType == self::DATA_STORE_TYPE_SQLITE) {
+
+            $res = $this->sqlite->query("SELECT * FROM pages where id = ?", $id);
+            if (!$res) {
+                throw new RuntimeException("An exception has occurred with the select pages query");
+            }
+            return $this->sqlite->res2arr($res);
+
+        } else {
+
+            return [];
 
         }
 
@@ -510,7 +539,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
 
     /**
      * Validate a Redirection
-     * @param    string $sourcePageId
+     * @param string $sourcePageId
      */
     function validateRedirection($sourcePageId)
     {
@@ -533,7 +562,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
 
     /**
      * Get IsValidate Redirection
-     * @param    string $sourcePageId
+     * @param string $sourcePageId
      * @return string
      */
     function getIsValidate($sourcePageId)
@@ -560,7 +589,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
 
     /**
      * Get TargetPageType
-     * @param    string $sourcePageId
+     * @param string $sourcePageId
      * @return
      * @throws Exception
      */
@@ -586,7 +615,8 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
     /**
      * Process metadata
      */
-    function processMeta(){
+    function processMeta()
+    {
 
 
         if ($this->dataStoreType == null) {
@@ -594,13 +624,13 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
         }
 
         // Data store type
-        if ($this->dataStoreType!=self::DATA_STORE_TYPE_SQLITE){
+        if ($this->dataStoreType != self::DATA_STORE_TYPE_SQLITE) {
             return;
         }
 
         global $ID;
-        $canonical = p_get_metadata($ID,"canonical");
-        if ($canonical!=""){
+        $canonical = p_get_metadata($ID, "canonical");
+        if ($canonical != "") {
 
             $res = $this->sqlite->query("select canonical from pages where ID = ?", $ID);
             if (!$res) {
@@ -608,33 +638,52 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
             }
             $canonicalInDb = $this->sqlite->res2single($res);
 
-            if ($canonicalInDb && $canonicalInDb!=$canonical) {
-                $row = array(
-                    "ID" => $ID,
-                    "CANONICAL" => $canonicalInDb
-                );
-                $res = $this->sqlite->storeEntry('pages_alias', $row);
+            $row = array(
+                "CANONICAL" => $canonical,
+                "ID" => $ID
+            );
+            if ($canonicalInDb && $canonicalInDb != $canonical) {
+
+                // Page has change of location
+                // Creation of an alias
+                $res = $this->sqlite->query("select * from pages_alias where CANONICAL = ? and ALIAS = ?", $row);
                 if (!$res) {
-                    $this->throwRuntimeException("There was a problem during pages_alias insertion");
+                    throw new RuntimeException("An exception has occurred with the alia selection query");
                 }
+                $aliasInDb = $this->sqlite->res2count($res);
+                if ($aliasInDb == 0) {
+                    $res = $this->sqlite->storeEntry('pages_alias', $row);
+                    if (!$res) {
+                        $this->throwRuntimeException("There was a problem during pages_alias insertion");
+                    }
+                }
+
+                // Update
+                $statement = 'update pages set canonical = ? where id = ?';
+                $res = $this->sqlite->query($statement, $row);
+                if (!$res) {
+                    $this->throwRuntimeException("There was a problem during page update");
+                }
+
+            } else {
+
+                if ($canonicalInDb == false) {
+                    $res = $this->sqlite->storeEntry('pages', $row);
+                    if (!$res) {
+                        $this->throwRuntimeException("There was a problem during pages insertion");
+                    }
+                }
+
             }
 
-            // Insertion
-            $row = array(
-                "ID" => $ID,
-                "CANONICAL" => $canonical
-            );
-            $res = $this->sqlite->storeEntry('pages', $row);
-            if (!$res) {
-                $this->throwRuntimeException("There was a problem during pages insertion");
-            }
 
         }
 
     }
+
     /**
      * Get TargetResource (It can be an external URL as an intern page id
-     * @param    string $sourcePageId
+     * @param string $sourcePageId
      * @return
      * @throws Exception
      */
@@ -729,7 +778,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
     /**
      * Validate URL
      * Allows for port, path and query string validations
-     * @param    string $url string containing url user input
+     * @param string $url string containing url user input
      * @return   boolean     Returns TRUE/FALSE
      */
     function isValidURL($url)
@@ -901,8 +950,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
             if (!$res) {
                 throw new RuntimeException('Errors during select of all redirections');
             }
-            $row = $this->sqlite->res2arr($res);
-            return $row;
+            return $this->sqlite->res2arr($res);
 
         } else {
 

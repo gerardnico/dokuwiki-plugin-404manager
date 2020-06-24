@@ -53,35 +53,50 @@ class canonical_plugin_404manager_test extends DokuWikiTest
             $redirectManager->deletePage($pageId);
         }
 
-        if ($dataStoreType==admin_plugin_404manager::DATA_STORE_TYPE_SQLITE) {
+        if ($dataStoreType == admin_plugin_404manager::DATA_STORE_TYPE_SQLITE) {
             $this->assertEquals($redirectManager->pageExist($pageId), 0, "The page was deleted");
         }
 
         // Save a page
         $text = DOKU_LF . '---json' . DOKU_LF
             . '{' . DOKU_LF
-            . '   "canonical":"'.$pageCanonical.'"' . DOKU_LF
-            . '}' .DOKU_LF
-            . '---' .DOKU_LF
+            . '   "canonical":"' . $pageCanonical . '"' . DOKU_LF
+            . '}' . DOKU_LF
+            . '---' . DOKU_LF
             . 'Content';
-        saveWikiText($pageId, $text, 'Updated meta');
+        saveWikiText($pageId, $text, 'Page creation');
 
         // In a request
         $request = new TestRequest();
         $request->get(array('id' => $pageId), '/doku.php');
         $request->execute();
 
-        if ($dataStoreType==admin_plugin_404manager::DATA_STORE_TYPE_SQLITE) {
+        if ($dataStoreType == admin_plugin_404manager::DATA_STORE_TYPE_SQLITE) {
             $this->assertEquals($redirectManager->pageExist($pageId), 1, "The page was added");
-        } else {
-            // One assertion is needed
-            $this->assertEquals(true, true);
         }
 
+        // Page move
+        saveWikiText($pageId, "", 'Page deletion');
+        $newPageId="lang:javascript:variable";
+        saveWikiText($newPageId, $text, 'Page creation');
+
+        // A request
+        $request = new TestRequest();
+        $request->get(array('id' => $newPageId), '/doku.php');
+        $request->execute();
+
+        if ($dataStoreType == admin_plugin_404manager::DATA_STORE_TYPE_SQLITE) {
+            $this->assertEquals(0, $redirectManager->pageExist($pageId), "The old page does not exist");
+            $this->assertEquals(1, $redirectManager->pageExist($newPageId), "The new page exist");
+            $pageRow = $redirectManager->getPage($pageId);
+            $this->assertEquals($pageCanonical, $pageRow['canonical'], "The canonical is the same");
+        }
+
+        // One assertion is needed for the other type of data store
+        $this->assertEquals(true, true);
 
 
     }
-
 
 
 }
