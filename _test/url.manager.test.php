@@ -3,7 +3,7 @@
  *
  * Test the re
  *
- * plugin_404manager
+ * @group plugin_404manager
  * @group plugins
  *
  */
