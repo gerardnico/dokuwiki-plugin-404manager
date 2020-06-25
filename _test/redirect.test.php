@@ -123,57 +123,7 @@ class redirect_plugin_404manager_test extends DokuWikiTest
 
 
 
-    /**
-     * Test a redirect to an internal page that was chosen through BestNamePage
-     * with a relocation to the same branch (the minimum target Id length)
-     * even if there is another page with the same name in an other branch
-     * @dataProvider providerDataStoreTypeData
-     * @param $dataStoreType
-     */
-    public function test_internalRedirectToBestNamePageOtherBranch($dataStoreType)
-    {
 
-
-        $redirectManager = UrlRedirection::get()->setDataStoreType($dataStoreType);
-        if ($redirectManager->isRedirectionPresent(constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE)) {
-            $redirectManager->deleteRedirection(constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE);
-        }
-
-
-        // Create the target Pages and add the pages to the index, otherwise, they will not be find by the ft_lookup
-        saveWikiText(constant_parameters::$REDIRECT_BEST_PAGE_NAME_TARGET_SAME_BRANCH, 'REDIRECT Best Page Name Same Branch', 'Test initialization');
-        idx_addPage(constant_parameters::$REDIRECT_BEST_PAGE_NAME_TARGET_SAME_BRANCH);
-        saveWikiText(constant_parameters::$REDIRECT_BEST_PAGE_NAME_TARGET_OTHER_BRANCH, 'REDIRECT Best Page Name Other Branch', 'Test initialization');
-        idx_addPage(constant_parameters::$REDIRECT_BEST_PAGE_NAME_TARGET_OTHER_BRANCH);
-
-
-        // Read only otherwise, you go in edit mode
-        global $AUTH_ACL;
-        $aclReadOnlyFile = constant_parameters::$DIR_RESOURCES . '/acl.auth.read_only.php';
-        $AUTH_ACL = file($aclReadOnlyFile);
-
-        global $conf;
-        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['ActionReaderFirst'] = action_plugin_404manager_url::GO_TO_BEST_PAGE_NAME;
-        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForSamePageName'] = 4;
-        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForStartPage'] = 3;
-        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForSameNamespace'] = 5;
-
-        $request = new TestRequest();
-        $request->get(array('id' => constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE), '/doku.php');
-        $response = $request->execute();
-
-
-        $locationHeader = $response->getHeader("Location");
-        $components = parse_url($locationHeader);
-        parse_str($components['query'], $queryKeys);
-
-        $this->assertNull($queryKeys['do'], "The is only shown");
-        $this->assertEquals(constant_parameters::$REDIRECT_BEST_PAGE_NAME_TARGET_SAME_BRANCH, $queryKeys['id'], "The Id of the source page is the asked page");
-        $this->assertEquals(constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE, $queryKeys[UrlRedirection::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
-        $this->assertEquals(UrlRedirection::TARGET_ORIGIN_BEST_PAGE_NAME, $queryKeys[UrlRedirection::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
-
-
-    }
 
     /**
      * Test a redirect to a namespace start page (that begins with start)
@@ -183,6 +133,7 @@ class redirect_plugin_404manager_test extends DokuWikiTest
      */
     public function test_internalRedirectToNamespaceStartPage($dataStoreType)
     {
+
 
 
         $redirectManager = UrlRedirection::get()->setDataStoreType($dataStoreType);
