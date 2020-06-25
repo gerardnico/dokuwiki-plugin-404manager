@@ -307,116 +307,11 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
             if (!$res) {
                 $this->throwRuntimeException("Something went wrong when deleting the redirections");
             }
+            $this->sqlite->res_close($res);
 
         }
 
     }
-
-    /**
-     * Delete Redirection
-     * @param string $id
-     */
-    function deletePage($id)
-    {
-
-        if ($this->dataStoreType == null) {
-            $this->initDataStore();
-        }
-
-        if ($this->dataStoreType == self::DATA_STORE_TYPE_SQLITE) {
-            $res = $this->sqlite->query('delete from pages where id = ?', $id);
-            if (!$res) {
-                $this->throwRuntimeException("Something went wrong when deleting a page");
-            }
-        }
-
-    }
-
-    /**
-     * Is Redirection of a page Id Present
-     * @param string $sourcePageId
-     * @return int
-     */
-    function isRedirectionPresent($sourcePageId)
-    {
-        $sourcePageId = strtolower($sourcePageId);
-
-        if ($this->dataStoreType == null) {
-            $this->initDataStore();
-        }
-
-        if ($this->dataStoreType == self::DATA_STORE_TYPE_CONF_FILE) {
-
-            if (isset($this->pageRedirections[$sourcePageId])) {
-                return 1;
-            } else {
-                return 0;
-            }
-
-        } else {
-
-            $res = $this->sqlite->query("SELECT * FROM redirections where SOURCE = ?", $sourcePageId);
-            return $this->sqlite->res2count($res);
-
-        }
-
-    }
-
-    /**
-     * Does the page is known in the pages table
-     * @param string $id
-     * @return int
-     */
-    function pageExist($id)
-    {
-        $id = strtolower($id);
-
-        if ($this->dataStoreType == null) {
-            $this->initDataStore();
-        }
-
-        if ($this->dataStoreType == self::DATA_STORE_TYPE_SQLITE) {
-
-            $res = $this->sqlite->query("SELECT * FROM pages where id = ?", $id);
-            return $this->sqlite->res2count($res);
-
-        } else {
-
-            return 0;
-
-        }
-
-    }
-
-    /**
-     * Does the page is known in the pages table
-     * @param string $id
-     * @return array
-     */
-    function getPage($id)
-    {
-        $id = strtolower($id);
-
-        if ($this->dataStoreType == null) {
-            $this->initDataStore();
-        }
-
-        if ($this->dataStoreType == self::DATA_STORE_TYPE_SQLITE) {
-
-            $res = $this->sqlite->query("SELECT * FROM pages where id = ?", $id);
-            if (!$res) {
-                throw new RuntimeException("An exception has occurred with the select pages query");
-            }
-            return $this->sqlite->res2arr($res);
-
-        } else {
-
-            return [];
-
-        }
-
-    }
-
 
 
 

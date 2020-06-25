@@ -113,12 +113,15 @@ class UrlRewrite
 
         } else {
 
-            $res = $this->sqlite->query("SELECT * FROM redirections where SOURCE = ?", $sourcePageId);
-            if ($this->sqlite->res2count($res) == 1){
-                return true;
+            $res = $this->sqlite->query("SELECT count(*) FROM redirections where SOURCE = ?", $sourcePageId);
+            $exists =null;
+            if ($this->sqlite->res2single($res) == 1){
+                $exists = true;
             } else {
-                return false;
+                $exists = false;
             }
+            $this->sqlite->res_close($res);
+            return $exists;
 
         }
 
@@ -199,9 +202,9 @@ class UrlRewrite
                 'source' => $sourcePageId
             );
 
-            $statement = 'select * from redirections where source = ?';
-            $res = $this->sqlite->query($statement, $sourcePageId);
-            $count = $this->sqlite->res2count($res);
+            $res = $this->sqlite->query('select count(*) from redirections where source = ?', $sourcePageId);
+            $count = $this->sqlite->res2single($res);
+            $this->sqlite->res_close($res);
             if ($count <> 1) {
                 $res = $this->sqlite->storeEntry('redirections', $entry);
                 if (!$res) {
@@ -319,7 +322,9 @@ class UrlRewrite
             if (!$res) {
                 throw new RuntimeException("An exception has occurred with the query");
             }
-            return $this->sqlite->res2single($res);
+            $target = $this->sqlite->res2single($res);
+            $this->sqlite->res_close($res);
+            return $target;
 
         }
     }
