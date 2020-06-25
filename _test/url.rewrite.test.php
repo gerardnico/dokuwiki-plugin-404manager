@@ -5,7 +5,7 @@
  *
  * ie the {@link UrlRewrite} class
  *
- * plugin_404manager
+ * @group plugin_404manager
  * @group plugins
  *
  */

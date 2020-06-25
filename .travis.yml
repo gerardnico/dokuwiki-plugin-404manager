@@ -12,7 +12,7 @@ before_install: wget https://raw.github.com/splitbrain/dokuwiki-travis/master/tr
 
 install: sh travis.sh
 
-script: cd _test && ./phpunit.phar --stderr --group plugin_404manager
+script: cd _test && ./phpunit.phar --stderr --group plugin_404manager --verbose --debug
 
 notifications:
   email:
