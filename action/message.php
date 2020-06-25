@@ -25,7 +25,7 @@ class action_plugin_404manager_message extends DokuWiki_Action_Plugin
 {
 
     // a class can not start with a number then 404manager is not a valid class name
-    CONST REDIRECT_MANAGER_BOX_CLASS = "redirect-manager";
+    const REDIRECT_MANAGER_BOX_CLASS = "redirect-manager";
 
     // Property key
     const ORIGIN_PAGE = '404id';
@@ -39,7 +39,6 @@ class action_plugin_404manager_message extends DokuWiki_Action_Plugin
     }
 
 
-
     function register(Doku_Event_Handler $controller)
     {
 
@@ -51,6 +50,19 @@ class action_plugin_404manager_message extends DokuWiki_Action_Plugin
             '_displayRedirectMessage',
             array()
         );
+
+//        /**
+//         * To send a message when redirected on edit mode
+//         * See {@link html_form()}
+//         * https://www.dokuwiki.org/devel:event:html_editform_output
+//         */
+//        $controller->register_hook(
+//            'HTML_EDITFORM_OUTPUT',
+//            'BEFORE',
+//            $this,
+//            '_displayRedirectMessage',
+//            array()
+//        );
 
 
     }
@@ -72,7 +84,7 @@ class action_plugin_404manager_message extends DokuWiki_Action_Plugin
         // Are we a test call
         // The redirection does not exit the process otherwise the test fails
         global $ID;
-        if ($ID == $pageIdOrigin){
+        if ($ID == $pageIdOrigin && action_plugin_404manager_urlmanager::GO_TO_EDIT_MODE!=$redirectSource) {
             return;
         }
 
@@ -103,6 +115,11 @@ class action_plugin_404manager_message extends DokuWiki_Action_Plugin
                 case action_plugin_404manager_urlmanager::TARGET_ORIGIN_SEARCH_ENGINE:
                     $message->addContent(sprintf($this->lang['message_redirected_to_searchengine'], hsc($pageIdOrigin)));
                     $message->setType(Message404::TYPE_WARNING);
+                    break;
+
+                case action_plugin_404manager_urlmanager::GO_TO_EDIT_MODE:
+                    $message->addContent($this->lang['message_redirected_to_edit_mode']);
+                    $message->setType(Message404::TYPE_CLASSIC);
                     break;
 
             }
@@ -232,7 +249,8 @@ class action_plugin_404manager_message extends DokuWiki_Action_Plugin
      * during the rendering process
      * Unset is done at the start of the 404 manager
      */
-    static function unsetNotification(){
+    static function unsetNotification()
+    {
 
         // Open session
         self::sessionStart();

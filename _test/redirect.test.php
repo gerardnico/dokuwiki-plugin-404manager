@@ -125,62 +125,7 @@ class redirect_plugin_404manager_test extends DokuWikiTest
 
 
 
-    /**
-     * Test a redirect to a namespace start page (that begins with start)
-     * It must happens when a page exists within another namespace that is completely not related to the old one.
-     * @dataProvider providerDataStoreTypeData
-     * @param $dataStoreType
-     */
-    public function test_internalRedirectToNamespaceStartPage($dataStoreType)
-    {
 
-
-
-        $redirectManager = UrlRedirection::get()->setDataStoreType($dataStoreType);
-        if ($redirectManager->isRedirectionPresent(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_SOURCE)) {
-            $redirectManager->deleteRedirection(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_SOURCE);
-        }
-
-        // Create the target Pages and add the pages to the index, otherwise, they will not be find by the ft_lookup
-        saveWikiText(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_BAD_TARGET, 'Page with the same name', 'but without any common name (namespace) in the path');
-        idx_addPage(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_BAD_TARGET);
-        saveWikiText(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_GOOD_TARGET, 'The start page of the 404 page namespace', 'Test initialization');
-        idx_addPage(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_GOOD_TARGET);
-
-        // Read only otherwise, you go in edit mode
-        global $AUTH_ACL;
-        $aclReadOnlyFile = constant_parameters::$DIR_RESOURCES . '/acl.auth.read_only.php';
-        $AUTH_ACL = file($aclReadOnlyFile);
-
-        global $conf;
-        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['ActionReaderFirst'] = action_plugin_404manager_url::GO_TO_BEST_NAMESPACE;
-        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForSamePageName'] = 4;
-        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForStartPage'] = 3;
-        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForSameNamespace'] = 5;
-        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WordsSeparator'] = ':';
-
-        $request = new TestRequest();
-        $request->get(array('id' => constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_SOURCE), '/doku.php');
-        $response = $request->execute();
-
-
-        $locationHeader = $response->getHeader("Location");
-        $components = parse_url($locationHeader);
-        parse_str($components['query'], $queryKeys);
-
-        $this->assertNull($queryKeys['do'], "The page was only shown");
-
-        // $REDIRECT_TO_NAMESPACE_START_PAGE_BAD_TARGET got a score of 9 (The base namespace 5 + same page name 4)
-        // $REDIRECT_TO_NAMESPACE_START_PAGE_GOOD_TARGET got a score of 13 (The base namespace 5 + the same namspace 5 + start page 3)
-        $this->assertEquals(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_GOOD_TARGET, $queryKeys['id'], "The Id of the source page is the asked page");
-        $this->assertNotEquals(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_BAD_TARGET, $queryKeys['id'], "The Id of the source page is the asked page");
-
-        // 404 Params
-        $this->assertEquals(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_SOURCE, $queryKeys[UrlRedirection::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
-        $this->assertEquals(UrlRedirection::TARGET_ORIGIN_BEST_NAMESPACE, $queryKeys[UrlRedirection::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
-
-
-    }
 
     /**
      * Test a redirect to a namespace start page (ie the start page has the name of its parent, not start as in the conf['start'] parameters )

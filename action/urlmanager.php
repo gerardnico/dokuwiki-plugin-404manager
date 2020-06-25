@@ -35,6 +35,7 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
     const TARGET_ORIGIN_BEST_NAMESPACE = 'bestNamespace';
     const TARGET_ORIGIN_SEARCH_ENGINE = 'searchEngine';
 
+
     // The constant parameters
     const GO_TO_SEARCH_ENGINE = 'GoToSearchEngine';
     const GO_TO_BEST_NAMESPACE = 'GoToBestNamespace';
@@ -90,35 +91,6 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
         if ($ACT != 'show') return false;
 
 
-
-        // Global variable needed in the process
-        global $ID;
-        global $conf;
-
-        // Do we have a canonical ?
-        $targetPage = UrlCanonical::get()->getPageIdFromCanonical($ID);
-        if ($targetPage) {
-
-            $this->internalRedirect($targetPage, self::TARGET_ORIGIN_CANONICAL);
-            return true;
-
-        }
-
-
-        // Get the page from redirection data
-        $targetPage = UrlRedirection::get()->getRedirectionTarget($ID);
-
-
-        // If this is an external redirect (other domain)
-        if (UrlStatic::isValidURL($targetPage) && $targetPage) {
-
-            $this->httpRedirect($targetPage, self::TARGET_ORIGIN_DATA_STORE);
-            return true;
-
-        }
-
-        // Internal redirect
-
         // There is one action for a writer:
         //   * edit mode direct
         // If the user is a writer (It have the right to edit).
@@ -130,18 +102,29 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
 
         }
 
-        // This is a reader
-        // Their are only three actions for a reader:
-        //   * redirect to a page (show another page id)
-        //   * go to the search page
-        //   * do nothing
+        // Global variable needed in the process
+        global $ID;
+        global $conf;
 
-        // If the page exist
-        if (page_exists($targetPage)) {
+        // Do we have a canonical ?
+        $targetPage = UrlCanonical::get()->getPageIdFromCanonical($ID);
+        if ($targetPage) {
 
-            $this->internalRedirect($targetPage, self::TARGET_ORIGIN_DATA_STORE);
+            if (page_exists($targetPage)) {
+                $this->rewriteRedirect($targetPage, self::TARGET_ORIGIN_CANONICAL);
+                return true;
+            } else {
+                //TODO: log warning
+            }
+
+        }
+
+        // If there is a redirection defined in the redirection table
+        $result = $this->processingTableRedirection();
+        if ($result){
+            // A redirection has occurred
+            // finish the process
             return true;
-
         }
 
         /*
@@ -203,9 +186,9 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
                     // Compare the two score
                     if ($scorePageName > 0 or $namespaceScore > 0) {
                         if ($scorePageName > $namespaceScore) {
-                            $this->internalRedirect($bestPageId, self::TARGET_ORIGIN_BEST_PAGE_NAME);
+                            $this->httpRedirect($bestPageId, self::TARGET_ORIGIN_BEST_PAGE_NAME);
                         } else {
-                            $this->internalRedirect($bestNamespaceId, self::TARGET_ORIGIN_BEST_PAGE_NAME);
+                            $this->httpRedirect($bestNamespaceId, self::TARGET_ORIGIN_BEST_PAGE_NAME);
                         }
                         return true;
                     }
@@ -218,7 +201,7 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
                     $score = $scoreNamespace['score'];
 
                     if ($score > 0) {
-                        $this->internalRedirect($bestNamespaceId, self::TARGET_ORIGIN_BEST_NAMESPACE);
+                        $this->httpRedirect($bestNamespaceId, self::TARGET_ORIGIN_BEST_NAMESPACE);
                         return true;
                     }
                     break;
@@ -326,14 +309,7 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
         $pageName = noNS($ID);
         if ($pageName != $conf['sidebar']) {
 
-            if ($this->getConf('ShowMessageClassic') == 1) {
-                $this->message->addContent($this->lang['message_redirected_to_edit_mode']);
-                $this->message->setType(Message404::TYPE_CLASSIC);
-            }
-
-            // If Param show page name unique and it's not a start page
-            $this->addToMessagePagesWithSameName($ID);
-
+            action_plugin_404manager_message::notify($ID, self::GO_TO_EDIT_MODE);
 
         }
 
@@ -372,7 +348,7 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
      * @throws Exception
      */
     private
-    function internalRedirect($targetPage, $redirectSource = 'Not Known')
+    function rewriteRedirect($targetPage, $redirectSource = 'Not Known')
     {
 
         global $ID;
@@ -406,9 +382,10 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
      * An HTTP Redirect to an internal page, no external resources
      * @param string $target - a dokuwiki id or an url
      * @param $targetOrigin - the origin of the target
+     * @param bool $permanent - true for a permanent redirection otherwise false
      */
     private
-    function httpRedirect($target, $targetOrigin)
+    function httpRedirect($target, $targetOrigin, $permanent = false)
     {
 
         global $ID;
@@ -439,11 +416,12 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
         }
 
         /*
-         * The function below send a 302
-         *
-         * FYI: to send a 301
-         * header('HTTP/1.1 301 Moved Permanently');
+         * The send_redirect function below send a 302
          */
+        if ($permanent){
+            // Not sure
+            header('HTTP/1.1 301 Moved Permanently');
+        }
         send_redirect($targetUrl);
 
 
@@ -566,6 +544,46 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
             throw new RuntimeException("An error occurred");
         }
 
+    }
+
+    /**
+     * This function check if there is a redirection declared
+     * in the redirection table
+     * @return bool - true if a rewrite or redirection occurs
+     * @throws Exception
+     */
+    private function processingTableRedirection()
+    {
+        global $ID;
+
+        // Known redirection in the table
+        // Get the page from redirection data
+        $targetPage = UrlRedirection::get()->getRedirectionTarget($ID);
+
+        // No data in the database
+        if ($targetPage==false){
+            return false;
+        }
+
+        // If this is an external redirect (other domain)
+        if (UrlStatic::isValidURL($targetPage) && $targetPage) {
+
+            $this->httpRedirect($targetPage, self::TARGET_ORIGIN_DATA_STORE, true);
+            return true;
+
+        }
+
+        // If the page exist
+        if (page_exists($targetPage)) {
+
+            $this->rewriteRedirect($targetPage, self::TARGET_ORIGIN_DATA_STORE);
+            return true;
+
+        } else {
+
+            // TODO: log the warning
+
+        }
     }
 
 }
