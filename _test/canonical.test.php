@@ -2,7 +2,7 @@
 /**
  * Integration Tests for the handling of the canonical
  *
- * @group plugin_404manager
+ * plugin_404manager
  * @group plugins
  *
  */
