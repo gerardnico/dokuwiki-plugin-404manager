@@ -32,6 +32,11 @@ class UrlStatic
     static $lang;
 
     /**
+     * @var string
+     */
+    static $DIR_RESOURCES;
+
+    /**
      * Validate URL
      * Allows for port, path and query string validations
      * @param string $url string containing url user input
@@ -94,6 +99,7 @@ class UrlStatic
         self::$PLUGIN_BASE_NAME = self::$INFO_PLUGIN['base'];
         global $lang;
         self::$lang = $lang[self::$PLUGIN_BASE_NAME];
+        self::$DIR_RESOURCES = __DIR__ . '/../_testResources';
 
     }
 

@@ -1,14 +1,15 @@
 <?php
 /**
  * This tests are testing the function that uses the redirect tables
- * ie the {@link UrlRedirection} class
+ * that describes rewrite rules
+ *
+ * ie the {@link UrlRewrite} class
  *
  * @group plugin_404manager
  * @group plugins
  *
  */
-require_once(__DIR__ . '/constant_parameters.php');
-require_once(__DIR__ . '/../class/UrlRedirection.php');
+require_once(__DIR__ . '/../class/UrlRewrite.php');
 require_once(__DIR__ . '/../action/urlmanager.php');
 class redirect_plugin_404manager_test extends DokuWikiTest
 {
@@ -25,8 +26,8 @@ class redirect_plugin_404manager_test extends DokuWikiTest
     {
         return array(
             array(null),
-            array(UrlRedirection::DATA_STORE_TYPE_CONF_FILE),
-            array(UrlRedirection::DATA_STORE_TYPE_SQLITE)
+            array(UrlRewrite::DATA_STORE_TYPE_CONF_FILE),
+            array(UrlRewrite::DATA_STORE_TYPE_SQLITE)
         );
     }
 
@@ -41,7 +42,7 @@ class redirect_plugin_404manager_test extends DokuWikiTest
     public function test_externalRedirect($dataStoreType)
     {
 
-        $redirectManager = UrlRedirection::get()->setDataStoreType($dataStoreType);
+        $redirectManager = UrlRewrite::get()->setDataStoreType($dataStoreType);
 
         $pageIdRedirected = "ToBeRedirected";
         $externalURL = 'http://gerardnico.com';
@@ -53,14 +54,17 @@ class redirect_plugin_404manager_test extends DokuWikiTest
         $redirectManager->addRedirection($pageIdRedirected, $externalURL);
 
         $isRedirectionPresent = $redirectManager->isRedirectionPresent($pageIdRedirected);
+        /** @noinspection PhpUndefinedMethodInspection */
         $this->assertEquals(true, $isRedirectionPresent,"The redirection is present");
         $redirectionTarget = $redirectManager->getRedirectionTarget($pageIdRedirected);
+        /** @noinspection PhpUndefinedMethodInspection */
         $this->assertNotEquals(false, $redirectionTarget,"The redirection is present - not false");
+        /** @noinspection PhpUndefinedMethodInspection */
         $this->assertEquals($externalURL, $redirectionTarget,"The redirection is present");
 
         // Read only otherwise you are redirected to the Edit Mode
         global $AUTH_ACL;
-        $aclReadOnlyFile = constant_parameters::$DIR_RESOURCES . '/acl.auth.read_only.php';
+        $aclReadOnlyFile = UrlStatic::$DIR_RESOURCES . '/acl.auth.read_only.php';
         $AUTH_ACL = file($aclReadOnlyFile);
 
         $request = new TestRequest();
@@ -68,6 +72,7 @@ class redirect_plugin_404manager_test extends DokuWikiTest
 
         $locationHeader = $response->getHeader("Location");
 
+        /** @noinspection PhpUndefinedMethodInspection */
         $this->assertEquals("Location: " . $externalURL, $locationHeader, "The page was redirected");
 
     }
@@ -82,7 +87,7 @@ class redirect_plugin_404manager_test extends DokuWikiTest
     public function test_internalRedirectToExistingPage($dataStoreType)
     {
 
-        $redirectManager = UrlRedirection::get()->setDataStoreType($dataStoreType);
+        $redirectManager = UrlRewrite::get()->setDataStoreType($dataStoreType);
 
         // in the $ID value, the first : is suppressed
         $sourcePageId = "an:page:that:does:not:exist";
@@ -103,7 +108,7 @@ class redirect_plugin_404manager_test extends DokuWikiTest
 
         // Read only otherwise, you go in edit mode
         global $AUTH_ACL;
-        $aclReadOnlyFile = constant_parameters::$DIR_RESOURCES . '/acl.auth.read_only.php';
+        $aclReadOnlyFile = UrlStatic::$DIR_RESOURCES . '/acl.auth.read_only.php';
         $AUTH_ACL = file($aclReadOnlyFile);
 
 
@@ -127,65 +132,7 @@ class redirect_plugin_404manager_test extends DokuWikiTest
 
 
 
-    /**
-     * Test a redirect to a namespace start page (ie the start page has the name of its parent, not start as in the conf['start'] parameters )
-     * It must happens when a page exists within another namespace that is completely not related to the old one.
-     *
-     * @dataProvider providerDataStoreTypeData
-     * @param $dataStoreType
-     * @throws Exception
-     */
-    public function test_internalRedirectToNamespaceStartPageWithParentName($dataStoreType)
-    {
 
-
-        $redirectManager = UrlRedirection::get()->setDataStoreType($dataStoreType);
-        if ($redirectManager->isRedirectionPresent(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_SOURCE)) {
-            $redirectManager->deleteRedirection(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_SOURCE);
-        }
-
-
-        // Create the target Pages and add the pages to the index, otherwise, they will not be find by the ft_lookup
-        saveWikiText(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_BAD_TARGET, 'Page with the same name', 'but without any common name (namespace) in the path');
-        idx_addPage(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_BAD_TARGET);
-        saveWikiText(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_GOOD_TARGET, 'The start page that has the same name that it\'s parent', 'Test initialization');
-        idx_addPage(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_GOOD_TARGET);
-
-        // Read only otherwise, you go in edit mode
-        global $AUTH_ACL;
-        $aclReadOnlyFile = constant_parameters::$DIR_RESOURCES . '/acl.auth.read_only.php';
-        $AUTH_ACL = file($aclReadOnlyFile);
-
-        global $conf;
-        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['ActionReaderFirst'] = action_plugin_404manager_url::GO_TO_BEST_PAGE_NAME;
-        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForSamePageName'] = 4;
-        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForStartPage'] = 3;
-        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForSameNamespace'] = 5;
-        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WordsSeparator'] = ':';
-        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['ShowPageNameIsNotUnique'] = 1;
-
-        $request = new TestRequest();
-        $request->get(array('id' => constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_SOURCE), '/doku.php');
-
-        $response = $request->execute();
-
-        $locationHeader = $response->getHeader("Location");
-        $components = parse_url($locationHeader);
-        parse_str($components['query'], $queryKeys);
-        $this->assertNull($queryKeys['do'], "The page is only shown");
-
-        // 404manager:ns_branch2:redirect_to_namespace_start_page = score 9
-        // 404manager:ns_branch3:ns_branch3
-        // $REDIRECT_TO_NAMESPACE_START_PAGE_BAD_TARGET got a score of 9 (The base namespace 5 + same page name 4)
-        // $REDIRECT_TO_NAMESPACE_START_PAGE_GOOD_TARGET got a score of 13 (The base namespace 5 + the same namespace 5 + start page 3)
-        $this->assertEquals(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_GOOD_TARGET, $queryKeys['id'], "The Id is the target page");
-        $this->assertNotEquals(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_BAD_TARGET, $queryKeys['id'], "The Id is not the source page");
-
-        $this->assertEquals(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_PARENT_SOURCE, $queryKeys[UrlRedirection::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
-        $this->assertEquals(UrlRedirection::TARGET_ORIGIN_BEST_PAGE_NAME, $queryKeys[UrlRedirection::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
-
-
-    }
 
     /**
      * Test basic redirections operations
@@ -198,8 +145,8 @@ class redirect_plugin_404manager_test extends DokuWikiTest
         $targetPage = 'testRedirectionsOperations:test';
         saveWikiText($targetPage, 'Test ', 'but without any common name (namespace) in the path');
         idx_addPage($targetPage);
-        /** @var UrlRedirection $redirectManager */
-        $redirectManager = UrlRedirection::get()
+        /** @var UrlRewrite $redirectManager */
+        $redirectManager = UrlRewrite::get()
             ->setDataStoreType($dataStoreType);
 
 
@@ -228,17 +175,17 @@ class redirect_plugin_404manager_test extends DokuWikiTest
         idx_addPage($targetPage);
 
         // Cleaning
-        /** @var UrlRedirection $redirectManager */
-        $redirectManager = UrlRedirection::get()
-            ->setDataStoreType(UrlRedirection::DATA_STORE_TYPE_SQLITE);
+        /** @var UrlRewrite $redirectManager */
+        $redirectManager = UrlRewrite::get()
+            ->setDataStoreType(UrlRewrite::DATA_STORE_TYPE_SQLITE);
         $redirectManager->deleteAllRedirections();
-        $filenameMigrated = UrlRedirection::DATA_STORE_CONF_FILE_PATH . '.migrated';
+        $filenameMigrated = UrlRewrite::DATA_STORE_CONF_FILE_PATH . '.migrated';
         if (file_exists($filenameMigrated)){
             unlink($filenameMigrated);
         }
 
         // Create a conf file
-        $redirectManager->setDataStoreType(UrlRedirection::DATA_STORE_TYPE_CONF_FILE);
+        $redirectManager->setDataStoreType(UrlRewrite::DATA_STORE_TYPE_CONF_FILE);
         $redirectManager->deleteAllRedirections();
         $sourcePageIdValidated = "doesNotExistValidateRedirections";
         $redirectManager->addRedirection($sourcePageIdValidated, $targetPage);
@@ -249,20 +196,45 @@ class redirect_plugin_404manager_test extends DokuWikiTest
         $count = $redirectManager->countRedirections();
         $this->assertEquals(2, $count, "The number of redirection is 2 in the conf file");
 
-        $this->assertEquals(true, file_exists(UrlRedirection::DATA_STORE_CONF_FILE_PATH), "The file was created");
+        $this->assertEquals(true, file_exists(UrlRewrite::DATA_STORE_CONF_FILE_PATH), "The file was created");
 
         // Settings the store will trigger the migration
-        $redirectManager->setDataStoreType(UrlRedirection::DATA_STORE_TYPE_SQLITE);
+        $redirectManager->setDataStoreType(UrlRewrite::DATA_STORE_TYPE_SQLITE);
 
         $count = $redirectManager->countRedirections();
         $this->assertEquals(1, $count, "The number of redirection is 1");
 
-        $this->assertEquals(false, file_exists(UrlRedirection::DATA_STORE_CONF_FILE_PATH), "The file does not exist anymore");
+        $this->assertEquals(false, file_exists(UrlRewrite::DATA_STORE_CONF_FILE_PATH), "The file does not exist anymore");
         $this->assertEquals(true, file_exists($filenameMigrated), "The file migrated exist");
 
 
 
     }
 
+    /**
+     * Test if an expression is a regular expression pattern
+     */
+    public function test_expressionIsRegular()
+    {
+
+        // Not an expression
+        $inputExpression = "Hallo";
+        $isRegularExpression = UrlRewrite::isRegularExpression($inputExpression);
+        /** @noinspection PhpUndefinedMethodInspection */
+        $this->assertEquals(0,$isRegularExpression,"The term (".$inputExpression.") is not a regular expression");
+
+        // A basic expression
+        $inputExpression = "/Hallo/";
+        $isRegularExpression = UrlRewrite::isRegularExpression($inputExpression);
+        /** @noinspection PhpUndefinedMethodInspection */
+        $this->assertEquals(true,$isRegularExpression,"The term (".$inputExpression.") is a regular expression");
+
+        // A complicated expression
+        $inputExpression = "/(/path1/path2/)(.*)/";
+        $isRegularExpression = UrlRewrite::isRegularExpression($inputExpression);
+        /** @noinspection PhpUndefinedMethodInspection */
+        $this->assertEquals(true,$isRegularExpression,"The term (" . $inputExpression . ") is a regular expression");
+
+    }
 
 }

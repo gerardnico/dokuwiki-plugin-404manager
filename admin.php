@@ -46,7 +46,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
     private $infoPlugin;
 
     /**
-     * @var UrlRedirection|null
+     * @var UrlRewrite|null
      */
     private $urlManager;
 
@@ -64,7 +64,7 @@ class admin_plugin_404manager extends DokuWiki_Admin_Plugin
         $this->setupLocale();
         $this->currentDate = date("c");
         $this->infoPlugin = $this->getInfo();
-        $this->urlManager = UrlRedirection::get();
+        $this->urlManager = UrlRewrite::get();
 
 
     }

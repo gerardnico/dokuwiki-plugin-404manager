@@ -5,19 +5,12 @@
  * @group plugin_404manager
  * @group plugins
  */
-require_once(__DIR__ . '/constant_parameters.php');
+
 
 class dokuwiki_plugin_404manager_test extends DokuWikiTest
 {
 
-    public static function setUpBeforeClass()
-    {
 
-        parent::setUpBeforeClass();
-        saveWikiText(constant_parameters::$PAGE_EXIST_ID, 'A page', 'Test initialization');
-        idx_addPage(constant_parameters::$PAGE_EXIST_ID);
-
-    }
 
 
     /**
@@ -54,24 +47,30 @@ class dokuwiki_plugin_404manager_test extends DokuWikiTest
     public function test_pageExists()
     {
 
+        $pageExistId = 'page_exist';
+        saveWikiText($pageExistId, 'REDIRECT Best Page Name Same Branch', 'Test initialization');
         // Not in a request
-        $this->assertTrue(page_exists(constant_parameters::$PAGE_EXIST_ID));
+        /** @noinspection PhpUndefinedMethodInspection */
+        $this->assertTrue(page_exists($pageExistId));
 
         // In a request
         $request = new TestRequest();
-        $request->get(array('id' => constant_parameters::$PAGE_EXIST_ID), '/doku.php');
-        $request->execute();
+        $request->get(array('id' => $pageExistId), '/doku.php');
         global $INFO;
+
+        /** @noinspection PhpUndefinedMethodInspection */
         $this->assertTrue($INFO['exists']);
 
         // Not in a request
-        $this->assertFalse(page_exists(constant_parameters::$PAGE_DOES_NOT_EXIST_ID));
+        $pageDoesNotExist = "pageDoesNotExist";
+        /** @noinspection PhpUndefinedMethodInspection */
+        $this->assertFalse(page_exists($pageDoesNotExist));
 
         // In a request
         $request = new TestRequest();
-        $request->get(array('id' => constant_parameters::$PAGE_DOES_NOT_EXIST_ID), '/doku.php');
-        $request->execute();
+        $request->get(array('id' => $pageDoesNotExist), '/doku.php');
         global $INFO;
+        /** @noinspection PhpUndefinedMethodInspection */
         $this->assertFalse($INFO['exists']);
 
     }

@@ -1,3 +1,4 @@
 # additional requirements for this plugin:
 # https://github.com/splitbrain/dokuwiki-travis
 https://github.com/cosmocode/sqlite.git   lib/plugins/sqlite
+https://github.com/gerardnico/dokuwiki-plugin-webcomponent.git   lib/plugins/webcomponent

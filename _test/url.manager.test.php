@@ -10,7 +10,6 @@
 require_once(__DIR__ . '/../class/UrlStatic.php');
 require_once(__DIR__ . '/../action/urlmanager.php');
 require_once(__DIR__ . '/../action/message.php');
-require_once(__DIR__ . '/constant_parameters.php');
 class manager_plugin_404manager_test extends DokuWikiTest
 {
 
@@ -28,7 +27,7 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['ActionReaderFirst'] = action_plugin_404manager_urlmanager::GO_TO_SEARCH_ENGINE;
 
         global $AUTH_ACL;
-        $aclReadOnlyFile = constant_parameters::$DIR_RESOURCES . '/acl.auth.read_only.php';
+        $aclReadOnlyFile = UrlStatic::$DIR_RESOURCES . '/acl.auth.read_only.php';
         $AUTH_ACL = file($aclReadOnlyFile);
 
         $request = new TestRequest();
@@ -64,6 +63,13 @@ class manager_plugin_404manager_test extends DokuWikiTest
     public function test_HttpInternalRedirectToBestNamePage()
     {
 
+        global $conf;
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['ActionReaderFirst'] = action_plugin_404manager_urlmanager::GO_TO_BEST_PAGE_NAME;
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForSamePageName'] = 4;
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForStartPage'] = 3;
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForSameNamespace'] = 5;
+
+
         // The page path component
         $pathSeparator = ":";
         $secondLevelName = "a_second_level_name";
@@ -73,45 +79,48 @@ class manager_plugin_404manager_test extends DokuWikiTest
         // The source id
         $sourceId = $secondLevelName . $pathSeparator . $firstLevelName . $pathSeparator . $name;
         // A page without the second level
-        $firstLevelPage = $firstLevelName . $pathSeparator . $name;
+        $goodTarget = $firstLevelName . $pathSeparator . $name;
         // A page in another branch on the same level
-        $secondLevelPage = "otherBranch" . $pathSeparator . $firstLevelName . $pathSeparator . $name;
+        $badTarget = "otherBranch" . $pathSeparator . $firstLevelName . $pathSeparator . $name;
 
-        $redirectManager = UrlRedirection::get();
+        $redirectManager = UrlRewrite::get();
         if ($redirectManager->isRedirectionPresent($sourceId)) {
             $redirectManager->deleteRedirection($sourceId);
         }
 
 
         // Create the target Pages and add the pages to the index, otherwise, they will not be find by the ft_lookup
-        saveWikiText($firstLevelPage, 'REDIRECT Best Page Name Same Branch', 'Test initialization');
-        idx_addPage($firstLevelPage);
-        saveWikiText($secondLevelPage, 'REDIRECT Best Page Name Other Branch', 'Test initialization');
-        idx_addPage($secondLevelPage);
+        saveWikiText($goodTarget, 'REDIRECT Best Page Name Same Branch', 'Test initialization');
+        idx_addPage($goodTarget);
+        saveWikiText($badTarget, 'REDIRECT Best Page Name Other Branch', 'Test initialization');
+        idx_addPage($badTarget);
 
 
         // Read only otherwise, you go in edit mode
         global $AUTH_ACL;
-        $aclReadOnlyFile = constant_parameters::$DIR_RESOURCES . '/acl.auth.read_only.php';
+        $aclReadOnlyFile = UrlStatic::$DIR_RESOURCES . '/acl.auth.read_only.php';
         $AUTH_ACL = file($aclReadOnlyFile);
 
-        global $conf;
-        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['ActionReaderFirst'] = action_plugin_404manager_urlmanager::GO_TO_BEST_PAGE_NAME;
-        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForSamePageName'] = 4;
-        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForStartPage'] = 3;
-        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForSameNamespace'] = 5;
+
 
         $request = new TestRequest();
         $response = $request->get(array('id' => $sourceId), '/doku.php');
 
-        // Check the canonical value
-        $canonical = $response->queryHTML('link[rel="canonical"]')->attr('href');
-        $canonicalPageId = UrlCanonical::toDokuWikiId($canonical);
-        $this->assertEquals($firstLevelPage, $canonicalPageId, "The page was redirected");
+        // A redirect
+        $locationHeader = $response->getHeader("Location");
+        $components = parse_url($locationHeader);
+        parse_str($components['query'], $queryKeys);
 
+        /** @noinspection PhpUndefinedMethodInspection */
+        $this->assertNull($queryKeys['do'], "The page was only shown");
+        /** @noinspection PhpUndefinedMethodInspection */
+        $this->assertEquals($goodTarget, $queryKeys['id'], "The Id of the source page is the asked page");
 
-        $messageBox = $response->queryHTML('.'.action_plugin_404manager_message::REDIRECT_MANAGER_BOX_CLASS)->count();
-        $this->assertEquals(1, $messageBox, "The message has fired");
+        /**
+         * Session parameters were the redirection is kept to show a message
+         * cannot be tested automatically because the test request just don't keep them
+         * Test need a headless browser
+         */
 
 
     }
@@ -131,11 +140,6 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WordsSeparator'] = ':';
 
 
-        $redirectManager = UrlRedirection::get();
-        if ($redirectManager->isRedirectionPresent(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_SOURCE)) {
-            $redirectManager->deleteRedirection(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_SOURCE);
-        }
-
         // Set of 3 pages, when a page has an homonym (same page name) but within another completly differents path (the name of the path have nothing in common)
         // the 404 manager must redirect to the start page of the namespace.
         $namespace1 = 'namespace1';
@@ -144,7 +148,7 @@ class manager_plugin_404manager_test extends DokuWikiTest
         global $conf;
         $sourceId = $namespace1 . $pathSeparator .'redirect_to_namespace_start_page';
 
-        // got a score of 8 ( the same namspace 5 + start page 3)
+        // got a score of 8 ( the same namespace 5 + start page 3)
         $goodTargetId =  $namespace1. $pathSeparator  . $conf['start'];
         // got a score of 4 (The same page name 4)
         $badTargetId =  $namespace2. $pathSeparator  .'redirect_to_namespace_start_page';
@@ -155,12 +159,18 @@ class manager_plugin_404manager_test extends DokuWikiTest
         saveWikiText($goodTargetId, 'The start page of the 404 page namespace', 'Test initialization');
         idx_addPage($goodTargetId);
 
+        // Delete any redirections
+        $redirectManager = UrlRewrite::get();
+        if ($redirectManager->isRedirectionPresent($sourceId)) {
+            $redirectManager->deleteRedirection($sourceId);
+        }
+
         // Read only otherwise, you go in edit mode
         global $AUTH_ACL;
-        $aclReadOnlyFile = constant_parameters::$DIR_RESOURCES . '/acl.auth.read_only.php';
+        $aclReadOnlyFile = UrlStatic::$DIR_RESOURCES . '/acl.auth.read_only.php';
         $AUTH_ACL = file($aclReadOnlyFile);
 
-
+        // Test request
         $request = new TestRequest();
         $response = $request->get(array('id' => $sourceId), '/doku.php');
 
@@ -168,16 +178,16 @@ class manager_plugin_404manager_test extends DokuWikiTest
         $components = parse_url($locationHeader);
         parse_str($components['query'], $queryKeys);
 
+        /** @noinspection PhpUndefinedMethodInspection */
         $this->assertNull($queryKeys['do'], "The page was only shown");
+        /** @noinspection PhpUndefinedMethodInspection */
+        $this->assertEquals($goodTargetId, $queryKeys['id'], "The Id of the source page is the asked page");
 
-        // $REDIRECT_TO_NAMESPACE_START_PAGE_BAD_TARGET
-        // $REDIRECT_TO_NAMESPACE_START_PAGE_GOOD_TARGET
-        $this->assertEquals(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_GOOD_TARGET, $queryKeys['id'], "The Id of the source page is the asked page");
-        $this->assertNotEquals(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_BAD_TARGET, $queryKeys['id'], "The Id of the source page is the asked page");
-
-        // 404 Params
-        $this->assertEquals(constant_parameters::$REDIRECT_TO_NAMESPACE_START_PAGE_SOURCE, $queryKeys[UrlRedirection::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
-        $this->assertEquals(UrlRedirection::TARGET_ORIGIN_BEST_NAMESPACE, $queryKeys[UrlRedirection::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
+        /**
+         * Session parameters were the redirection is kept to show a message
+         * cannot be tested automatically because the test request just don't keep them
+         * Test need a headless browser
+         */
 
 
     }

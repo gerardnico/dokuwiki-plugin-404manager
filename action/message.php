@@ -7,7 +7,7 @@ if (!defined('DOKU_PLUGIN')) define('DOKU_PLUGIN', DOKU_INC . 'lib/plugins/');
 // Needed to get the redirection manager
 // require_once(DOKU_PLUGIN . 'action.php');
 
-require_once(__DIR__ . '/../class/UrlRedirection.php');
+require_once(__DIR__ . '/../class/UrlRewrite.php');
 require_once(__DIR__ . '/../class/UrlCanonical.php');
 require_once(__DIR__ . '/urlmanager.php');
 require_once(__DIR__ . '/../class/message.model.php');

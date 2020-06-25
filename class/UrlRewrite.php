@@ -7,7 +7,7 @@
  */
 require_once(__DIR__ . '/UrlStatic.php');
 
-class UrlRedirection
+class UrlRewrite
 {
 
     // A static function to hold the 404 manager
@@ -53,12 +53,12 @@ class UrlRedirection
 
 
     /**
-     * @return UrlRedirection
+     * @return UrlRewrite
      */
     public static function get()
     {
         if (self::$urlRedirection == null) {
-            self::$urlRedirection = new UrlRedirection();
+            self::$urlRedirection = new UrlRewrite();
         }
         return self::$urlRedirection;
     }

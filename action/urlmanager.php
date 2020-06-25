@@ -7,7 +7,7 @@ if (!defined('DOKU_PLUGIN')) define('DOKU_PLUGIN', DOKU_INC . 'lib/plugins/');
 // Needed to get the redirection manager
 // require_once(DOKU_PLUGIN . 'action.php');
 
-require_once(__DIR__ . '/../class/UrlRedirection.php');
+require_once(__DIR__ . '/../class/UrlRewrite.php');
 require_once(__DIR__ . '/../class/UrlCanonical.php');
 require_once(__DIR__ . '/message.php');
 
@@ -558,7 +558,7 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
 
         // Known redirection in the table
         // Get the page from redirection data
-        $targetPage = UrlRedirection::get()->getRedirectionTarget($ID);
+        $targetPage = UrlRewrite::get()->getRedirectionTarget($ID);
 
         // No data in the database
         if ($targetPage==false){
@@ -584,6 +584,72 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
             // TODO: log the warning
 
         }
+    }
+
+    /**
+     * Test a redirect to a namespace start page
+     * (ie the start page has the name of its parent, not start as in the conf['start'] parameters )
+     * It must happens when a page exists within another namespace that is completely not related to the old one.
+     *
+     */
+    public function test_internalRedirectToNamespaceStartPageWithParentName()
+    {
+
+        global $conf;
+        $pathSeparator = ':';
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['ActionReaderFirst'] = action_plugin_404manager_urlmanager::GO_TO_BEST_PAGE_NAME;
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForSamePageName'] = 4;
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForStartPage'] = 3;
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForSameNamespace'] = 5;
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WordsSeparator'] = $pathSeparator;
+        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['ShowPageNameIsNotUnique'] = 1;
+
+
+        // Set of 3 pages, when a page has an homonym (same page name) but within another completly differents path (the name of the path have nothing in common)
+        // the 404 manager must redirect to the start page of the namespace.
+        $subName1 = "name1";
+        $subName2 = "name2";
+        $name = 'redirect_to_namespace_start_page';
+        $sourceId =  $subName1 . $pathSeparator . $name;
+        $goodTarget =  $subName1 . $pathSeparator  . $conf['start']; // score of 8: same namespace 5 + start page 3
+        $badTarget =  $subName2 . $pathSeparator  . $name; // score of 4: same page name score of 4
+
+
+        $redirectManager = UrlRewrite::get();
+        if ($redirectManager->isRedirectionPresent($sourceId)) {
+            $redirectManager->deleteRedirection($sourceId);
+        }
+
+
+        // Create the target Pages and add the pages to the index, otherwise, they will not be find by the ft_lookup
+        saveWikiText($badTarget, 'Page with the same name', 'but without any common name (namespace) in the path');
+        idx_addPage($badTarget);
+        saveWikiText($goodTarget, 'The start page that has the same name that it\'s parent', 'Test initialization');
+        idx_addPage($goodTarget);
+
+        // Read only otherwise, you go in edit mode
+        global $AUTH_ACL;
+        $aclReadOnlyFile = constant_parameters::$DIR_RESOURCES . '/acl.auth.read_only.php';
+        $AUTH_ACL = file($aclReadOnlyFile);
+
+
+        $request = new TestRequest();
+        $response = $request->get(array('id' => $sourceId), '/doku.php');
+
+        $locationHeader = $response->getHeader("Location");
+        $components = parse_url($locationHeader);
+        parse_str($components['query'], $queryKeys);
+        /** @noinspection PhpUndefinedMethodInspection */
+        $this->assertNull($queryKeys['do'], "The page is only shown");
+        /** @noinspection PhpUndefinedMethodInspection */
+        $this->assertEquals($goodTarget, $queryKeys['id'], "The Id is the target page");
+
+        /**
+         * The rewrite data are passed now via session and no more via URL
+         * It's then not possible to test them automatically
+         */
+
+
     }
 
 }
