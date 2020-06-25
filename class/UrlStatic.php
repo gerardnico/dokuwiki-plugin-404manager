@@ -97,6 +97,8 @@ class UrlStatic
 
     }
 
+
+
 }
 
 UrlStatic::init();

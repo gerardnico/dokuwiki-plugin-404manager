@@ -24,6 +24,9 @@ require_once(__DIR__ . '/../class/message.model.php');
 class action_plugin_404manager_message extends DokuWiki_Action_Plugin
 {
 
+    // a class can not start with a number then 404manager is not a valid class name
+    CONST REDIRECT_MANAGER_BOX_CLASS = "redirect-manager";
+
     // Property key
     const ORIGIN_PAGE = '404id';
     const ORIGIN_TYPE = '404type';
@@ -186,21 +189,20 @@ class action_plugin_404manager_message extends DokuWiki_Action_Plugin
     function printMessage($message): void
     {
         if ($message->getContent() <> "") {
+
             $pluginInfo = $this->getInfo();
-            // a class can not start with a number then 404manager is not a valid class name
-            $redirectManagerClass = "redirect-manager";
 
             if ($message->getType() == Message404::TYPE_CLASSIC) {
-                ptln('<div class="alert alert-success ' . $redirectManagerClass . '" role="alert">');
+                ptln('<div class="alert alert-success ' . self::REDIRECT_MANAGER_BOX_CLASS . '" role="alert">');
             } else {
-                ptln('<div class="alert alert-warning ' . $redirectManagerClass . '" role="alert">');
+                ptln('<div class="alert alert-warning ' . self::REDIRECT_MANAGER_BOX_CLASS . '" role="alert">');
             }
 
             print $message->getContent();
 
-
             print '<div class="managerreference">' . $this->lang['message_come_from'] . ' <a href="' . $pluginInfo['url'] . '" class="urlextern" title="' . $pluginInfo['desc'] . '"  rel="nofollow">' . $pluginInfo['name'] . '</a>.</div>';
             print('</div>');
+
         }
     }
 

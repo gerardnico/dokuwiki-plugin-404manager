@@ -64,10 +64,7 @@ class constant_parameters
         self::$EXPLICIT_REDIRECT_PAGE_SOURCE = self::$MANAGER404_NAMESPACE . self::PATH_SEPARATOR . 'explicit_redirect_to_internal_page_source';
         self::$EXPLICIT_REDIRECT_PAGE_TARGET = self::$MANAGER404_NAMESPACE . self::PATH_SEPARATOR . 'explicit_redirect_to_internal_page_target';
 
-        self::$REDIRECT_BEST_PAGE_NAME_SOURCE = self::$MANAGER404_NAMESPACE . self::PATH_SEPARATOR . self::NS_BRANCH_1 . self::PATH_SEPARATOR . self::NS_PAGE . self::PATH_SEPARATOR .'redirect_best_page_name';
-        // Without Level1
-        self::$REDIRECT_BEST_PAGE_NAME_TARGET_SAME_BRANCH = self::$MANAGER404_NAMESPACE . self::PATH_SEPARATOR . self::NS_PAGE . self::PATH_SEPARATOR .'redirect_best_page_name';
-        self::$REDIRECT_BEST_PAGE_NAME_TARGET_OTHER_BRANCH = self::$MANAGER404_NAMESPACE . self::PATH_SEPARATOR . self::NS_BRANCH_2 . self::PATH_SEPARATOR . self::NS_PAGE . self::PATH_SEPARATOR .'redirect_best_page_name';
+
 
         // Set of 3 pages, when a page has an homonym (same page name) but within another completly differents path (the name of the path have nothing in common)
         // the 404 manager must redirect to the start page of the namespace.

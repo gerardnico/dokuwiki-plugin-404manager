@@ -1,6 +1,7 @@
 <?php
 /**
- * Integration Tests for the 404manager plugin through Dokuwiki Request
+ * This tests are testing the function that uses the redirect tables
+ * ie the {@link UrlRedirection} class
  *
  * @group plugin_404manager
  * @group plugins
@@ -40,8 +41,7 @@ class redirect_plugin_404manager_test extends DokuWikiTest
     public function test_externalRedirect($dataStoreType)
     {
 
-        $redirectManager = UrlRedirection::get()
-            ->setDataStoreType($dataStoreType);
+        $redirectManager = UrlRedirection::get()->setDataStoreType($dataStoreType);
 
         $pageIdRedirected = "ToBeRedirected";
         $externalURL = 'http://gerardnico.com';
@@ -73,47 +73,6 @@ class redirect_plugin_404manager_test extends DokuWikiTest
     }
 
 
-
-
-    /**
-     * Test a redirect to an internal page that does not exist
-     * Where a actionReaderFirst is search
-     * @dataProvider providerDataStoreTypeData
-     * @param $dataStoreType
-     */
-    public function test_goToSearchEngineBasic($dataStoreType)
-    {
-
-        $conf ['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['ActionReaderFirst'] = action_plugin_404manager_url::GO_TO_SEARCH_ENGINE;
-
-        $redirectManager = UrlRedirection::get()->setDataStoreType($dataStoreType);
-        if ($redirectManager->isRedirectionPresent(constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE)) {
-            $redirectManager->deleteRedirection(constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE);
-        }
-        $redirectManager->addRedirection(constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE, constant_parameters::$PAGE_DOES_NOT_EXIST_ID);
-
-        // Read only otherwise, you go in edit mode
-        global $AUTH_ACL;
-        $aclReadOnlyFile = constant_parameters::$DIR_RESOURCES . '/acl.auth.read_only.php';
-        $AUTH_ACL = file($aclReadOnlyFile);
-
-        $request = new TestRequest();
-        $request->get(array('id' => constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE), '/doku.php');
-        $response = $request->execute();
-
-
-        $locationHeader = $response->getHeader("Location");
-        $components = parse_url($locationHeader);
-        parse_str($components['query'], $queryKeys);
-        $this->assertEquals($queryKeys['do'], 'search', "The page was redirected to the search page");
-        $this->assertEquals($queryKeys['id'], constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE, "The Id of the source page is the asked page");
-        $this->assertNotNull($queryKeys['q'], "The query must be not null");
-        $this->assertEquals($queryKeys[UrlRedirection::QUERY_STRING_ORIGIN_PAGE], constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE, "The 404 id must be present");
-        $this->assertEquals($queryKeys[UrlRedirection::QUERY_STRING_REDIR_TYPE], UrlRedirection::TARGET_ORIGIN_SEARCH_ENGINE, "The redirect type is known");
-
-
-    }
-
     /**
      * Test a redirect to an internal page that exist
      *
@@ -123,17 +82,24 @@ class redirect_plugin_404manager_test extends DokuWikiTest
     public function test_internalRedirectToExistingPage($dataStoreType)
     {
 
-
         $redirectManager = UrlRedirection::get()->setDataStoreType($dataStoreType);
-        if ($redirectManager->isRedirectionPresent(constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE)) {
-            $redirectManager->deleteRedirection(constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE);
+
+        // in the $ID value, the first : is suppressed
+        $sourcePageId = "an:page:that:does:not:exist";
+        saveWikiText($sourcePageId, "", 'Without content the page is deleted');
+        $targetPage = "an:existing:page";
+        saveWikiText($targetPage, 'EXPLICIT_REDIRECT_PAGE_TARGET', 'Test initialization');
+
+
+        // Clean test state
+        if ($redirectManager->isRedirectionPresent($sourcePageId)) {
+            $redirectManager->deleteRedirection($sourcePageId);
         }
-        $redirectManager->addRedirection(constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE, constant_parameters::$EXPLICIT_REDIRECT_PAGE_TARGET);
+        $redirectManager->addRedirection($sourcePageId, $targetPage);
 
-        // Create the target Page
-        saveWikiText(constant_parameters::$EXPLICIT_REDIRECT_PAGE_TARGET, 'EXPLICIT_REDIRECT_PAGE_TARGET', 'Test initialization');
 
-        $conf ['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['ActionReaderFirst'] = action_plugin_404manager_url::GO_TO_SEARCH_ENGINE;
+        // Set to search engine first but because of order of precedence, this should not happens
+        $conf ['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['ActionReaderFirst'] = action_plugin_404manager_urlmanager::GO_TO_SEARCH_ENGINE;
 
         // Read only otherwise, you go in edit mode
         global $AUTH_ACL;
@@ -142,69 +108,20 @@ class redirect_plugin_404manager_test extends DokuWikiTest
 
 
         $request = new TestRequest();
-        $request->get(array('id' => constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE), '/doku.php');
-        $response = $request->execute();
+        $response = $request->get(array('id' => $sourcePageId), '/doku.php');
+
+        // Check the canonical value
+        $canonical = $response->queryHTML('link[rel="canonical"]')->attr('href');
+        $canonicalPageId = UrlCanonical::toDokuWikiId($canonical);
+        $this->assertEquals($targetPage, $canonicalPageId, "The page was redirected");
 
 
-        $locationHeader = $response->getHeader("Location");
-        $components = parse_url($locationHeader);
-        parse_str($components['query'], $queryKeys);
-        $this->assertNull($queryKeys['do'], "The page is only shown");
-
-        $this->assertEquals(constant_parameters::$EXPLICIT_REDIRECT_PAGE_TARGET, $queryKeys['id'], "The Id of the page is the target page");
-
-        $this->assertEquals(constant_parameters::$EXPLICIT_REDIRECT_PAGE_SOURCE, $queryKeys[UrlRedirection::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
-        $this->assertEquals(UrlRedirection::TARGET_ORIGIN_DATA_STORE, $queryKeys[UrlRedirection::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
-
+        $messageBox = $response->queryHTML('.'.action_plugin_404manager_message::REDIRECT_MANAGER_BOX_CLASS)->count();
+        $this->assertEquals(1, $messageBox, "The message has fired");
 
     }
 
-    /**
-     * Test a redirect to an internal page that was chosen through BestNamePage
-     * with a relocation in the same branch
-     * @dataProvider providerDataStoreTypeData
-     * @param $dataStoreType
-     */
-    public function test_internalRedirectToBestNamePageSameBranch($dataStoreType)
-    {
 
-        $redirectManager = UrlRedirection::get()->setDataStoreType($dataStoreType);
-        if ($redirectManager->isRedirectionPresent(constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE)) {
-            $redirectManager->deleteRedirection(constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE);
-        }
-
-        // Create the target Page
-        saveWikiText(constant_parameters::$REDIRECT_BEST_PAGE_NAME_TARGET_SAME_BRANCH, 'REDIRECT Best Page Name Same Branch', 'Test initialization');
-        // Add the page to the index, otherwise, it will not be find by the ft_lookup
-        idx_addPage(constant_parameters::$REDIRECT_BEST_PAGE_NAME_TARGET_SAME_BRANCH);
-
-
-        // Read only otherwise, you go in edit mode
-        global $AUTH_ACL;
-        $aclReadOnlyFile = constant_parameters::$DIR_RESOURCES . '/acl.auth.read_only.php';
-        $AUTH_ACL = file($aclReadOnlyFile);
-
-        global $conf;
-        $conf ['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['ActionReaderFirst'] = action_plugin_404manager_url::GO_TO_BEST_PAGE_NAME;
-        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForSamePageName'] = 4;
-        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForStartPage'] = 3;
-        $conf['plugin'][UrlStatic::$PLUGIN_BASE_NAME]['WeightFactorForSameNamespace'] = 5;
-
-        $request = new TestRequest();
-        $request->get(array('id' => constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE), '/doku.php');
-        $response = $request->execute();
-
-
-        $locationHeader = $response->getHeader("Location");
-        $components = parse_url($locationHeader);
-        parse_str($components['query'], $queryKeys);
-        $this->assertNull($queryKeys['do'], "The page has no action than show");
-        $this->assertEquals(constant_parameters::$REDIRECT_BEST_PAGE_NAME_TARGET_SAME_BRANCH, $queryKeys['id'], "The Id of the source page is the asked page");
-        $this->assertEquals(constant_parameters::$REDIRECT_BEST_PAGE_NAME_SOURCE, $queryKeys[UrlRedirection::QUERY_STRING_ORIGIN_PAGE], "The 404 id must be present");
-        $this->assertEquals(UrlRedirection::TARGET_ORIGIN_BEST_PAGE_NAME, $queryKeys[UrlRedirection::QUERY_STRING_REDIR_TYPE], "The redirect type is known");
-
-
-    }
 
     /**
      * Test a redirect to an internal page that was chosen through BestNamePage

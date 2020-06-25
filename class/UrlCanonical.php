@@ -216,5 +216,16 @@ class UrlCanonical
 
     }
 
+    /**
+     * @param $url - a URL path http://whatever/hello/my/lord (The canonical)
+     * @return string - a dokuwiki Id hello:my:lord
+     */
+    static function toDokuWikiId($url)
+    {
+        // Replace / by : and suppress the first : because the global $ID does not have it
+        return substr( str_replace("/",":",parse_url($url, PHP_URL_PATH)),1);
+    }
+
+
 
 }

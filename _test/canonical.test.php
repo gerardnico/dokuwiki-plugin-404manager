@@ -16,7 +16,7 @@ class plugin_404manager_canonical_test extends DokuWikiTest
 
 
     /**
-     * Test a redirect to an external Web Site
+     * Test a internal canonical rewrite redirect
      *
      */
     public function test_canonical()
@@ -53,7 +53,6 @@ class plugin_404manager_canonical_test extends DokuWikiTest
         // In a request
         $request = new TestRequest();
         $request->get(array('id' => $pageId), '/doku.php');
-        $request->execute();
 
         $this->assertEquals($urlCanonicalManager->pageExist($pageId), 1, "The page was added to the table");
 
@@ -65,7 +64,6 @@ class plugin_404manager_canonical_test extends DokuWikiTest
         // A request
         $request = new TestRequest();
         $request->get(array('id' => $newPageId), '/doku.php');
-        $request->execute();
 
         $this->assertEquals(0, $urlCanonicalManager->pageExist($pageId), "The old page does not exist in db");
         $this->assertEquals(1, $urlCanonicalManager->pageExist($newPageId), "The new page exist");
@@ -73,14 +71,6 @@ class plugin_404manager_canonical_test extends DokuWikiTest
         $this->assertEquals($pageCanonical, $pageRow[0]['CANONICAL'], "The canonical is the same");
 
 
-        // In a request
-        $request = new TestRequest();
-        $request->get(array('id' => $pageId), '/doku.php');
-        $response = $request->execute();
-
-
-        // One assertion is needed for the other type of data store
-        $this->assertEquals(true, true);
 
 
     }
