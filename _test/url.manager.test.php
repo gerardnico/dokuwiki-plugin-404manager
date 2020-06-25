@@ -3,14 +3,14 @@
  *
  * Test the re
  *
- * @group plugin_404manager
+ * plugin_404manager
  * @group plugins
  *
  */
 require_once(__DIR__ . '/../class/UrlStatic.php');
 require_once(__DIR__ . '/../action/urlmanager.php');
 require_once(__DIR__ . '/../action/message.php');
-class manager_plugin_404manager_test extends DokuWikiTest
+class plugin_404manager_url_manager_test extends DokuWikiTest
 {
 
     // Needed otherwise the plugin is not enabled

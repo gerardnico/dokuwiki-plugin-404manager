@@ -7,7 +7,7 @@
  */
 
 
-class dokuwiki_plugin_404manager_test extends DokuWikiTest
+class plugin_404manager_dokuwiki_test extends DokuWikiTest
 {
 
 

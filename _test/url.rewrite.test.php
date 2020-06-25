@@ -5,13 +5,13 @@
  *
  * ie the {@link UrlRewrite} class
  *
- * @group plugin_404manager
+ * plugin_404manager
  * @group plugins
  *
  */
 require_once(__DIR__ . '/../class/UrlRewrite.php');
 require_once(__DIR__ . '/../action/urlmanager.php');
-class redirect_plugin_404manager_test extends DokuWikiTest
+class plugin_404manager_url_rewrite_test extends DokuWikiTest
 {
 
     // Needed otherwise the plugin is not enabled
