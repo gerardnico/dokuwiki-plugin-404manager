@@ -10,57 +10,23 @@ require_once(__DIR__ . '/UrlStatic.php');
 class UrlRewrite
 {
 
-    // A static function to hold the 404 manager
-    private static $urlRedirection = null;
-
-    // Data Store Type
-    // The Data Store Type variable
-    private $dataStoreType;
-
-    // The Data Store Type possible value
-    const DATA_STORE_TYPE_CONF_FILE = 'confFile';
-    const DATA_STORE_TYPE_SQLITE = 'sqlite';
-
-
-    // Variable var and not public/private because php4 can't handle this kind of variable
-
-    // ###################################
-    // Data Stored in a conf file
-    // Deprecated
-    // ###################################
-    // The file path of the direct redirection (from an Page to a Page or URL)
-    // No more used, replaced by a sqlite database
-    const DATA_STORE_CONF_FILE_PATH = __DIR__ . "/404managerRedirect.conf";
-    // The content of the conf file in memory
-    var $pageRedirections = array();
-
-
     // Use to pass parameter between the handle and the html function to keep the form data
-    var $redirectionSource = '';
-    var $redirectionTarget = '';
     var $currentDate = '';
-    // Deprecated
-    private $redirectionType;
-    // Deprecated
-    var $isValidate = '';
-    // Deprecated
-    var $targetResourceType = 'Default';
 
 
     /** @var helper_plugin_sqlite $sqlite */
     private $sqlite;
 
-
-
     /**
-     * @return UrlRewrite
+     * UrlRewrite constructor.
+     * The sqlite path is dependent of the dokuwiki data
+     * and for each new class, the dokuwiki helper just delete it
+     * We need to pass it then
+     * @param helper_plugin_sqlite $sqlite
      */
-    public static function get()
+    public function __construct(helper_plugin_sqlite $sqlite)
     {
-        if (self::$urlRedirection == null) {
-            self::$urlRedirection = new UrlRewrite();
-        }
-        return self::$urlRedirection;
+        $this->sqlite = $sqlite;
     }
 
 
@@ -71,21 +37,11 @@ class UrlRewrite
     function deleteRedirection($sourcePageId)
     {
 
-        if ($this->dataStoreType == null) {
-            $this->initDataStore();
+        $res = $this->sqlite->query('delete from redirections where source = ?', $sourcePageId);
+        if (!$res) {
+            UrlStatic::throwRuntimeException("Something went wrong when deleting the redirections");
         }
 
-        if ($this->dataStoreType == self::DATA_STORE_TYPE_CONF_FILE) {
-            unset($this->pageRedirections[strtolower($sourcePageId)]);
-            $this->savePageRedirections();
-        } else {
-
-            $res = $this->sqlite->query('delete from redirections where source = ?', $sourcePageId);
-            if (!$res) {
-                $this->throwRuntimeException("Something went wrong when deleting the redirections");
-            }
-
-        }
 
     }
 
@@ -99,31 +55,17 @@ class UrlRewrite
     {
         $sourcePageId = strtolower($sourcePageId);
 
-        if ($this->dataStoreType == null) {
-            $this->initDataStore();
-        }
 
-        if ($this->dataStoreType == self::DATA_STORE_TYPE_CONF_FILE) {
-
-            if (isset($this->pageRedirections[$sourcePageId])) {
-                return true;
-            } else {
-                return false;
-            }
-
+        $res = $this->sqlite->query("SELECT count(*) FROM redirections where SOURCE = ?", $sourcePageId);
+        $exists = null;
+        if ($this->sqlite->res2single($res) == 1) {
+            $exists = true;
         } else {
-
-            $res = $this->sqlite->query("SELECT count(*) FROM redirections where SOURCE = ?", $sourcePageId);
-            $exists =null;
-            if ($this->sqlite->res2single($res) == 1){
-                $exists = true;
-            } else {
-                $exists = false;
-            }
-            $this->sqlite->res_close($res);
-            return $exists;
-
+            $exists = false;
         }
+        $this->sqlite->res_close($res);
+        return $exists;
+
 
     }
 
@@ -151,75 +93,32 @@ class UrlRewrite
         // Lower page name is the dokuwiki Id
         $sourcePageId = strtolower($sourcePageId);
 
-        if ($this->dataStoreType == null) {
-            $this->initDataStore();
-        }
+        // Note the order is important
+        // because it's used in the bin of the update statement
+        $entry = array(
+            'target' => $targetPageId,
+            'creation_timestamp' => $creationDate,
+            'source' => $sourcePageId
+        );
 
-        if ($this->dataStoreType == self::DATA_STORE_TYPE_CONF_FILE) {
-
-            if (isset($this->pageRedirections[$sourcePageId])) {
-                $this->throwRuntimeException('Redirection for page (' . $sourcePageId . 'already exist');
+        $res = $this->sqlite->query('select count(*) from redirections where source = ?', $sourcePageId);
+        $count = $this->sqlite->res2single($res);
+        $this->sqlite->res_close($res);
+        if ($count <> 1) {
+            $res = $this->sqlite->storeEntry('redirections', $entry);
+            if (!$res) {
+                UrlStatic::throwRuntimeException("There was a problem during insertion");
             }
-
-            $this->pageRedirections[$sourcePageId]['TargetPage'] = $targetPageId;
-            $this->pageRedirections[$sourcePageId]['CreationDate'] = $creationDate;
-            // If the call come from the admin page and not from the process function
-            if (substr_count($_SERVER['HTTP_REFERER'], 'admin.php')) {
-
-                $this->pageRedirections[$sourcePageId]['IsValidate'] = 'Y';
-                $this->pageRedirections[$sourcePageId]['CountOfRedirection'] = 0;
-                $this->pageRedirections[$sourcePageId]['LastRedirectionDate'] = $this->lang['Never'];
-                $this->pageRedirections[$sourcePageId]['LastReferrer'] = 'Never';
-
-            } else {
-
-                $this->pageRedirections[$sourcePageId]['IsValidate'] = 'N';
-                $this->pageRedirections[$sourcePageId]['CountOfRedirection'] = 1;
-                $this->pageRedirections[$sourcePageId]['LastRedirectionDate'] = $creationDate;
-                if ($_SERVER['HTTP_REFERER'] <> '') {
-                    $this->pageRedirections[$sourcePageId]['LastReferrer'] = $_SERVER['HTTP_REFERER'];
-                } else {
-                    $this->pageRedirections[$sourcePageId]['LastReferrer'] = $this->lang['Direct Access'];
-                }
-
-            }
-
-            if (!UrlStatic::isValidURL($targetPageId)) {
-                $this->pageRedirections[$sourcePageId]['TargetPageType'] = 'Internal Page';
-            } else {
-                $this->pageRedirections[$sourcePageId]['TargetPageType'] = 'Url';
-            }
-
-            $this->savePageRedirections();
-
         } else {
-
-            // Note the order is important
-            // because it's used in the bin of the update statement
-            $entry = array(
-                'target' => $targetPageId,
-                'creation_timestamp' => $creationDate,
-                'source' => $sourcePageId
-            );
-
-            $res = $this->sqlite->query('select count(*) from redirections where source = ?', $sourcePageId);
-            $count = $this->sqlite->res2single($res);
-            $this->sqlite->res_close($res);
-            if ($count <> 1) {
-                $res = $this->sqlite->storeEntry('redirections', $entry);
-                if (!$res) {
-                    UrlStatic::throwRuntimeException("There was a problem during insertion");
-                }
-            } else {
-                // Primary key constraint, the storeEntry function does not use an UPSERT
-                $statement = 'update redirections set target = ?, creation_timestamp = ? where source = ?';
-                $res = $this->sqlite->query($statement, $entry);
-                if (!$res) {
-                    UrlStatic::throwRuntimeException("There was a problem during the update");
-                }
+            // Primary key constraint, the storeEntry function does not use an UPSERT
+            $statement = 'update redirections set target = ?, creation_timestamp = ? where source = ?';
+            $res = $this->sqlite->query($statement, $entry);
+            if (!$res) {
+                UrlStatic::throwRuntimeException("There was a problem during the update");
             }
-
         }
+
+
     }
 
     /**
@@ -308,27 +207,16 @@ class UrlRewrite
 
         $sourcePageId = strtolower($sourcePageId);
 
-        if ($this->dataStoreType == null) {
-            $this->initDataStore();
+        $res = $this->sqlite->query("select target from redirections where source = ?", $sourcePageId);
+        if (!$res) {
+            throw new RuntimeException("An exception has occurred with the query");
         }
+        $target = $this->sqlite->res2single($res);
+        $this->sqlite->res_close($res);
+        return $target;
 
-        if ($this->dataStoreType == self::DATA_STORE_TYPE_CONF_FILE) {
 
-            return $this->pageRedirections[strtolower($sourcePageId)]['TargetPage'];
-
-        } else {
-
-            $res = $this->sqlite->query("select target from redirections where source = ?", $sourcePageId);
-            if (!$res) {
-                throw new RuntimeException("An exception has occurred with the query");
-            }
-            $target = $this->sqlite->res2single($res);
-            $this->sqlite->res_close($res);
-            return $target;
-
-        }
     }
-
 
 
     /**
@@ -389,45 +277,6 @@ class UrlRewrite
         return $this;
     }
 
-    /**
-     * Init the data store
-     */
-    private function initDataStore()
-    {
-
-        if ($this->dataStoreType == null) {
-            $this->sqlite = plugin_load('helper', 'sqlite');
-            if (!$this->sqlite) {
-                $this->dataStoreType = self::DATA_STORE_TYPE_CONF_FILE;
-            } else {
-                $this->dataStoreType = self::DATA_STORE_TYPE_SQLITE;
-            }
-        }
-
-        if ($this->getDataStoreType() == self::DATA_STORE_TYPE_CONF_FILE) {
-
-            msg(UrlStatic::$lang['SqliteMandatory'], MANAGER404_MSG_INFO, $allow = MSG_MANAGERS_ONLY);
-
-            //Set the redirection data
-            if (@file_exists(self::DATA_STORE_CONF_FILE_PATH)) {
-                $this->pageRedirections = unserialize(io_readFile(self::DATA_STORE_CONF_FILE_PATH, false));
-            }
-
-        } else {
-
-
-            $this->sqlite = UrlStatic::getSqlite();
-
-
-            // Migration of the old store
-            if (@file_exists(self::DATA_STORE_CONF_FILE_PATH)) {
-                $this->dataStoreMigration();
-            }
-
-
-        }
-
-    }
 
     /**
      * Delete all redirections
@@ -435,28 +284,13 @@ class UrlRewrite
      */
     function deleteAllRedirections()
     {
-        if ($this->dataStoreType == null) {
-            $this->initDataStore();
+
+
+        $res = $this->sqlite->query("delete from redirections");
+        if (!$res) {
+            UrlStatic::throwRuntimeException('Errors during delete of all redirections');
         }
 
-        if ($this->dataStoreType == self::DATA_STORE_TYPE_SQLITE) {
-
-            $res = $this->sqlite->query("delete from redirections");
-            if (!$res) {
-                $this->throwRuntimeException('Errors during delete of all redirections');
-            }
-
-        } else {
-
-            if (file_exists(self::DATA_STORE_CONF_FILE_PATH)) {
-                $res = unlink(self::DATA_STORE_CONF_FILE_PATH);
-                if (!$res) {
-                    $this->throwRuntimeException('Unable to delete the file ' . self::DATA_STORE_TYPE_CONF_FILE);
-                }
-            }
-            $this->pageRedirections = array();
-
-        }
     }
 
     /**
@@ -465,84 +299,30 @@ class UrlRewrite
      */
     function countRedirections()
     {
-        if ($this->dataStoreType == null) {
-            $this->initDataStore();
+
+        $res = $this->sqlite->query("select count(1) from redirections");
+        if (!$res) {
+            UrlStatic::throwRuntimeException('Errors during delete of all redirections');
         }
+        $value = $this->sqlite->res2single($res);
+        $this->sqlite->res_close($res);
+        return $value;
 
-        if ($this->dataStoreType == self::DATA_STORE_TYPE_SQLITE) {
-
-            $res = $this->sqlite->query("select count(1) from redirections");
-            if (!$res) {
-                throw new RuntimeException('Errors during delete of all redirections');
-            }
-            $value = $this->sqlite->res2single($res);
-            return $value;
-
-        } else {
-
-            return count($this->pageRedirections);
-
-        }
     }
 
-    public function getDataStoreType()
-    {
-        if ($this->dataStoreType == null) {
-            $this->initDataStore();
-        }
-        return $this->dataStoreType;
-    }
 
     /**
      * @return array
      */
-    private function getRedirections()
+    function getRedirections()
     {
-        if ($this->dataStoreType == null) {
-            $this->initDataStore();
+
+        $res = $this->sqlite->query("select * from redirections");
+        if (!$res) {
+            throw new RuntimeException('Errors during select of all redirections');
         }
+        return $this->sqlite->res2arr($res);
 
-        if ($this->dataStoreType == self::DATA_STORE_TYPE_SQLITE) {
-
-            $res = $this->sqlite->query("select * from redirections");
-            if (!$res) {
-                throw new RuntimeException('Errors during select of all redirections');
-            }
-            return $this->sqlite->res2arr($res);
-
-        } else {
-
-            return $this->pageRedirections;
-
-        }
-    }
-
-
-    /**
-     * Migrate from a conf file to sqlite
-     */
-    function dataStoreMigration()
-    {
-        if (!file_exists(self::DATA_STORE_CONF_FILE_PATH)) {
-            $this->throwRuntimeException("The file to migrate does not exist (" . self::DATA_STORE_CONF_FILE_PATH . ")");
-        }
-        // We cannot use the getRedirections method because this is a sqlite data store
-        // it will return nothing
-        $pageRedirections = unserialize(io_readFile(self::DATA_STORE_CONF_FILE_PATH, false));
-        foreach ($pageRedirections as $key => $row) {
-
-
-            $sourcePageId = $key;
-            $targetPageId = $row['TargetPage'];
-            $creationDate = $row['CreationDate'];
-            $isValidate = $row['IsValidate'];
-
-            if ($isValidate == 'Y') {
-                $this->addRedirectionWithDate($sourcePageId, $targetPageId, $creationDate);
-            }
-        }
-
-        rename(self::DATA_STORE_CONF_FILE_PATH, self::DATA_STORE_CONF_FILE_PATH . '.migrated');
 
     }
 

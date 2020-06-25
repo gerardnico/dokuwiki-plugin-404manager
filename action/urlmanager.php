@@ -45,12 +45,28 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
     const GO_TO_EDIT_MODE = 'GoToEditMode';
     const NOTHING = 'Nothing';
 
+    /**
+     * @var
+     */
+    private $sqlite;
+    /**
+     * @var UrlCanonical
+     */
+    private $canonicalManager;
+    /**
+     * @var UrlRewrite
+     */
+    private $urlRewrite;
+
 
     function __construct()
     {
         // enable direct access to language strings
         // ie $this->lang
         $this->setupLocale();
+        $this->sqlite = UrlStatic::getSqlite();
+        $this->canonicalManager = new UrlCanonical($this->sqlite);
+        $this->urlRewrite = new UrlRewrite($this->sqlite);
     }
 
 
@@ -82,7 +98,7 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
         if ($INFO['exists']) {
             action_plugin_404manager_message::unsetNotification();
             // Check if there is a canonical meta
-            UrlCanonical::get()->processCanonicalMeta();
+            $this->canonicalManager->processCanonicalMeta();
             return false;
         }
 
@@ -107,7 +123,7 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
         global $conf;
 
         // Do we have a canonical ?
-        $targetPage = UrlCanonical::get()->getPageIdFromCanonical($ID);
+        $targetPage = $this->canonicalManager->getPageIdFromCanonical($ID);
         if ($targetPage) {
 
             if (page_exists($targetPage)) {
@@ -538,7 +554,7 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
             "REFERRER" => $_SERVER['HTTP_REFERER'],
             "TYPE" => $targetOrigin
         );
-        $res = UrlStatic::getSqlite()->storeEntry('redirections_log', $row);
+        $res = $this->sqlite->storeEntry('redirections_log', $row);
 
         if (!$res) {
             throw new RuntimeException("An error occurred");
@@ -558,7 +574,7 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
 
         // Known redirection in the table
         // Get the page from redirection data
-        $targetPage = UrlRewrite::get()->getRedirectionTarget($ID);
+        $targetPage = $this->urlRewrite->getRedirectionTarget($ID);
 
         // No data in the database
         if ($targetPage==false){

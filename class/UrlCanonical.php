@@ -21,19 +21,15 @@ class UrlCanonical
 
     /**
      * UrlCanonical constructor.
+     * The sqlite is given as argument because the test class
+     * delete the data before and after the run
+     * @param $sqlite
      */
-    public function __construct()
+    public function __construct($sqlite)
     {
-        $this->sqlite = UrlStatic::getSqlite();
+        $this->sqlite = $sqlite;
     }
 
-    public static function get()
-    {
-        if (self::$urlCanonical == null) {
-            self::$urlCanonical = new UrlCanonical();
-        }
-        return self::$urlCanonical;
-    }
 
     /**
      * Does the page is known in the pages table
@@ -49,7 +45,7 @@ class UrlCanonical
         if (!$res) {
             throw new RuntimeException("An exception has occurred with the select pages query");
         }
-        $res2arr = $this->sqlite->res2arr($res);
+        $res2arr = $this->sqlite->res2row($res);
         $this->sqlite->res_close($res);
         return $res2arr;
 

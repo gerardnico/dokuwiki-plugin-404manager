@@ -19,30 +19,14 @@ class plugin_404manager_url_rewrite_test extends DokuWikiTest
 
 
     /**
-     * A data provider to create parametrized test
-     * @return array
-     */
-    public function providerDataStoreTypeData()
-    {
-        return array(
-            array(null),
-            array(UrlRewrite::DATA_STORE_TYPE_CONF_FILE),
-            array(UrlRewrite::DATA_STORE_TYPE_SQLITE)
-        );
-    }
-
-
-    /**
      * Test a redirect to an external Web Site
      *
-     * @dataProvider providerDataStoreTypeData
-     * @param $dataStoreType
-     * @throws Exception
+
      */
-    public function test_externalRedirect($dataStoreType)
+    public function test_externalRedirect()
     {
 
-        $redirectManager = UrlRewrite::get()->setDataStoreType($dataStoreType);
+        $redirectManager = (new UrlRewrite(UrlStatic::getSqlite()));
 
         $pageIdRedirected = "ToBeRedirected";
         $externalURL = 'http://gerardnico.com';
@@ -81,13 +65,12 @@ class plugin_404manager_url_rewrite_test extends DokuWikiTest
     /**
      * Test a redirect to an internal page that exist
      *
-     * @dataProvider providerDataStoreTypeData
-     * @param $dataStoreType
+
      */
-    public function test_internalRedirectToExistingPage($dataStoreType)
+    public function test_internalRedirectToExistingPage()
     {
 
-        $redirectManager = UrlRewrite::get()->setDataStoreType($dataStoreType);
+        $redirectManager = new UrlRewrite(UrlStatic::getSqlite());
 
         // in the $ID value, the first : is suppressed
         $sourcePageId = "an:page:that:does:not:exist";
@@ -137,17 +120,14 @@ class plugin_404manager_url_rewrite_test extends DokuWikiTest
     /**
      * Test basic redirections operations
      *
-     * @dataProvider providerDataStoreTypeData
-     * @param $dataStoreType
      */
-    public function testRedirectionsOperations($dataStoreType)
+    public function testRedirectionsOperations()
     {
         $targetPage = 'testRedirectionsOperations:test';
         saveWikiText($targetPage, 'Test ', 'but without any common name (namespace) in the path');
         idx_addPage($targetPage);
-        /** @var UrlRewrite $redirectManager */
-        $redirectManager = UrlRewrite::get()
-            ->setDataStoreType($dataStoreType);
+
+        $redirectManager = new UrlRewrite(UrlStatic::getSqlite());
 
 
         $redirectManager->deleteAllRedirections();
@@ -164,52 +144,6 @@ class plugin_404manager_url_rewrite_test extends DokuWikiTest
     }
 
 
-    /**
-     * Test the migration of a data store from file to Sqlite
-     */
-    public function testMigrateDataStore()
-    {
-
-        $targetPage = 'testMigrateDataStore:test';
-        saveWikiText($targetPage, 'Test ', 'test summary');
-        idx_addPage($targetPage);
-
-        // Cleaning
-        /** @var UrlRewrite $redirectManager */
-        $redirectManager = UrlRewrite::get()
-            ->setDataStoreType(UrlRewrite::DATA_STORE_TYPE_SQLITE);
-        $redirectManager->deleteAllRedirections();
-        $filenameMigrated = UrlRewrite::DATA_STORE_CONF_FILE_PATH . '.migrated';
-        if (file_exists($filenameMigrated)){
-            unlink($filenameMigrated);
-        }
-
-        // Create a conf file
-        $redirectManager->setDataStoreType(UrlRewrite::DATA_STORE_TYPE_CONF_FILE);
-        $redirectManager->deleteAllRedirections();
-        $sourcePageIdValidated = "doesNotExistValidateRedirections";
-        $redirectManager->addRedirection($sourcePageIdValidated, $targetPage);
-        $redirectManager->validateRedirection($sourcePageIdValidated);
-        $sourcePageIdNotValidated = "doesNotExistNotValidateRedirections";
-        $redirectManager->addRedirection($sourcePageIdNotValidated, $targetPage);
-
-        $count = $redirectManager->countRedirections();
-        $this->assertEquals(2, $count, "The number of redirection is 2 in the conf file");
-
-        $this->assertEquals(true, file_exists(UrlRewrite::DATA_STORE_CONF_FILE_PATH), "The file was created");
-
-        // Settings the store will trigger the migration
-        $redirectManager->setDataStoreType(UrlRewrite::DATA_STORE_TYPE_SQLITE);
-
-        $count = $redirectManager->countRedirections();
-        $this->assertEquals(1, $count, "The number of redirection is 1");
-
-        $this->assertEquals(false, file_exists(UrlRewrite::DATA_STORE_CONF_FILE_PATH), "The file does not exist anymore");
-        $this->assertEquals(true, file_exists($filenameMigrated), "The file migrated exist");
-
-
-
-    }
 
     /**
      * Test if an expression is a regular expression pattern

@@ -83,7 +83,7 @@ class plugin_404manager_url_manager_test extends DokuWikiTest
         // A page in another branch on the same level
         $badTarget = "otherBranch" . $pathSeparator . $firstLevelName . $pathSeparator . $name;
 
-        $redirectManager = UrlRewrite::get();
+        $redirectManager = new UrlRewrite(UrlStatic::getSqlite());
         if ($redirectManager->isRedirectionPresent($sourceId)) {
             $redirectManager->deleteRedirection($sourceId);
         }
@@ -160,7 +160,7 @@ class plugin_404manager_url_manager_test extends DokuWikiTest
         idx_addPage($goodTargetId);
 
         // Delete any redirections
-        $redirectManager = UrlRewrite::get();
+        $redirectManager = new UrlRewrite(UrlStatic::getSqlite());
         if ($redirectManager->isRedirectionPresent($sourceId)) {
             $redirectManager->deleteRedirection($sourceId);
         }

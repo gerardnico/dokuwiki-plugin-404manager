@@ -22,7 +22,7 @@ class plugin_404manager_canonical_test extends DokuWikiTest
     public function test_canonical()
     {
 
-        $urlCanonicalManager = UrlCanonical::get();
+        $urlCanonicalManager = new UrlCanonical(UrlStatic::getSqlite());
 
         // Data
         $pageId = "web:javascript:variable";
@@ -39,7 +39,8 @@ class plugin_404manager_canonical_test extends DokuWikiTest
             $urlCanonicalManager->deletePage($newPageId);
         }
 
-        $this->assertEquals($urlCanonicalManager->pageExist($pageId), 0, "The page was deleted");
+        /** @noinspection PhpUndefinedMethodInspection */
+        $this->assertEquals(0,$urlCanonicalManager->pageExist($pageId), "The page was deleted");
 
         // Save a page
         $text = DOKU_LF . '---json' . DOKU_LF
@@ -54,10 +55,12 @@ class plugin_404manager_canonical_test extends DokuWikiTest
         $request = new TestRequest();
         $request->get(array('id' => $pageId), '/doku.php');
 
-        $this->assertEquals($urlCanonicalManager->pageExist($pageId), 1, "The page was added to the table");
+        /** @noinspection PhpUndefinedMethodInspection */
+        $this->assertEquals(1, $urlCanonicalManager->pageExist($pageId), "The page was added to the table");
 
         // Page move
         saveWikiText($pageId, "", 'Page deletion');
+        /** @noinspection PhpUndefinedMethodInspection */
         $this->assertEquals(false, page_exists($pageId), "The old page does not exist on disk");
         saveWikiText($newPageId, $text, 'Page creation');
 
@@ -65,10 +68,13 @@ class plugin_404manager_canonical_test extends DokuWikiTest
         $request = new TestRequest();
         $request->get(array('id' => $newPageId), '/doku.php');
 
+        /** @noinspection PhpUndefinedMethodInspection */
         $this->assertEquals(0, $urlCanonicalManager->pageExist($pageId), "The old page does not exist in db");
+        /** @noinspection PhpUndefinedMethodInspection */
         $this->assertEquals(1, $urlCanonicalManager->pageExist($newPageId), "The new page exist");
         $pageRow = $urlCanonicalManager->getPage($newPageId);
-        $this->assertEquals($pageCanonical, $pageRow[0]['CANONICAL'], "The canonical is the same");
+        /** @noinspection PhpUndefinedMethodInspection */
+        $this->assertEquals($pageCanonical, $pageRow['CANONICAL'], "The canonical is the same");
 
 
 

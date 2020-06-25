@@ -2,10 +2,7 @@
 
 if (!defined('DOKU_INC')) die();
 if (!defined('DOKU_PLUGIN')) define('DOKU_PLUGIN', DOKU_INC . 'lib/plugins/');
-// Needed for the page lookup
-//require_once(DOKU_INC . 'inc/fulltext.php');
-// Needed to get the redirection manager
-// require_once(DOKU_PLUGIN . 'action.php');
+
 
 require_once(__DIR__ . '/../class/UrlRewrite.php');
 require_once(__DIR__ . '/../class/UrlCanonical.php');
@@ -51,19 +48,6 @@ class action_plugin_404manager_message extends DokuWiki_Action_Plugin
             array()
         );
 
-//        /**
-//         * To send a message when redirected on edit mode
-//         * See {@link html_form()}
-//         * https://www.dokuwiki.org/devel:event:html_editform_output
-//         */
-//        $controller->register_hook(
-//            'HTML_EDITFORM_OUTPUT',
-//            'BEFORE',
-//            $this,
-//            '_displayRedirectMessage',
-//            array()
-//        );
-
 
     }
 
@@ -93,7 +77,7 @@ class action_plugin_404manager_message extends DokuWiki_Action_Plugin
             switch ($redirectSource) {
 
                 case action_plugin_404manager_urlmanager::TARGET_ORIGIN_DATA_STORE:
-                    $message->addContent(sprintf($this->lang['message_redirected_by_redirect'], hsc($pageIdOrigin)));
+                    $message->addContent(sprintf($this->getLang('message_redirected_by_redirect'), hsc($pageIdOrigin)));
                     $message->setType(Message404::TYPE_CLASSIC);
                     break;
 

@@ -13,10 +13,6 @@ if (!defined('MANAGER404_MSG_NOTIFY')) define('MANAGER404_MSG_NOTIFY', 2);
  */
 class UrlStatic
 {
-    /**
-     * @var helper_plugin_sqlite $sqlite
-     */
-    static $sqlite;
 
     /**
      * Init via the {@link init}
@@ -50,26 +46,33 @@ class UrlStatic
 
     /**
      * Init the data store
+     * Sqlite cannot be static because
+     * between two test classes
+     * the data dir where the database is saved is deleted.
+     *
+     * You need to store the variable in your plugin
+     *
+     * @return helper_plugin_sqlite $sqlite
      */
     static function getSqlite()
     {
 
-        if (self::$sqlite == null) {
-
-            global $lang;
-
-            self::$sqlite = plugin_load('helper', 'sqlite');
-            if (self::$sqlite == null) {
-                msg($lang[self::$PLUGIN_BASE_NAME]['SqliteMandatory'], MANAGER404_MSG_INFO, $allow = MSG_MANAGERS_ONLY);
-            }
-
-            $init = self::$sqlite->init(self::$PLUGIN_BASE_NAME, DOKU_PLUGIN . self::$PLUGIN_BASE_NAME . '/db/');
-            if (!$init) {
-                msg($lang[self::$PLUGIN_BASE_NAME]['SqliteUnableToInitialize'], MSG_MANAGERS_ONLY);
-            }
+        $sqlite = plugin_load('helper', 'sqlite');
+        if ($sqlite == null) {
+            # TODO: Man we cannot get the message anymore ['SqliteMandatory'];
+            $sqliteMandatoryMessage = "The Sqlite Plugin is mandatory";
+            msg($sqliteMandatoryMessage, MANAGER404_MSG_INFO, $allow = MSG_MANAGERS_ONLY);
+            self::throwRuntimeException($sqliteMandatoryMessage);
         }
 
-        return self::$sqlite;
+        $init = $sqlite->init(self::$PLUGIN_BASE_NAME, DOKU_PLUGIN . self::$PLUGIN_BASE_NAME . '/db/');
+        if (!$init) {
+            # TODO: Message 'SqliteUnableToInitialize'
+            $message = "Unable to initialize Sqlite";
+            msg($message, MSG_MANAGERS_ONLY);
+            self::throwRuntimeException($message);
+        }
+        return $sqlite;
 
     }
 
@@ -84,7 +87,9 @@ class UrlStatic
      */
     static function throwRuntimeException($message): void
     {
-        throw new RuntimeException(self::$PLUGIN_BASE_NAME . ' - ' . $message);
+        if (defined('DOKU_UNITTEST')) {
+            throw new RuntimeException(self::$PLUGIN_BASE_NAME . ' - ' . $message);
+        }
     }
 
     /**
@@ -102,7 +107,6 @@ class UrlStatic
         self::$DIR_RESOURCES = __DIR__ . '/../_testResources';
 
     }
-
 
 
 }
