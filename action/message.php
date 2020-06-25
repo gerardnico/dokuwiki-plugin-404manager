@@ -35,33 +35,7 @@ class action_plugin_404manager_message extends DokuWiki_Action_Plugin
         $this->setupLocale();
     }
 
-    private static function sessionClose()
-    {
-        // Close the session
-        $result = session_write_close();
-        if (!$result) {
-            UrlStatic::throwRuntimeException("Failure to write the session");
-        }
 
-    }
-
-    private static function sessionStart()
-    {
-        $sessionStatus = session_status();
-        switch ($sessionStatus) {
-            case PHP_SESSION_DISABLED:
-                throw new RuntimeException("Sessions are disabled");
-                break;
-            case PHP_SESSION_NONE:
-                $result = @session_start();
-                if (!$result) {
-                    throw new RuntimeException("The session was not successfully started");
-                }
-                break;
-            case PHP_SESSION_ACTIVE:
-                break;
-        }
-    }
 
     function register(Doku_Event_Handler $controller)
     {
@@ -86,10 +60,18 @@ class action_plugin_404manager_message extends DokuWiki_Action_Plugin
     function _displayRedirectMessage(&$event, $param)
     {
 
+
         // Message
         $message = new Message404();
 
         list($pageIdOrigin, $redirectSource) = self::getNotification();
+
+        // Are we a test call
+        // The redirection does not exit the process otherwise the test fails
+        global $ID;
+        if ($ID == $pageIdOrigin){
+            return;
+        }
 
         if ($pageIdOrigin) {
 
@@ -292,5 +274,32 @@ class action_plugin_404manager_message extends DokuWiki_Action_Plugin
 
     }
 
+    private static function sessionStart()
+    {
+        $sessionStatus = session_status();
+        switch ($sessionStatus) {
+            case PHP_SESSION_DISABLED:
+                throw new RuntimeException("Sessions are disabled");
+                break;
+            case PHP_SESSION_NONE:
+                $result = @session_start();
+                if (!$result) {
+                    throw new RuntimeException("The session was not successfully started");
+                }
+                break;
+            case PHP_SESSION_ACTIVE:
+                break;
+        }
+    }
+
+    private static function sessionClose()
+    {
+        // Close the session
+        $result = session_write_close();
+        if (!$result) {
+            UrlStatic::throwRuntimeException("Failure to write the session");
+        }
+
+    }
 
 }

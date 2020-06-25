@@ -8,7 +8,7 @@
  */
 require_once(__DIR__ . '/constant_parameters.php');
 require_once(__DIR__ . '/../class/UrlRedirection.php');
-require_once(__DIR__ . '/../action/url_manager.php');
+require_once(__DIR__ . '/../action/urlmanager.php');
 class redirect_plugin_404manager_test extends DokuWikiTest
 {
 
@@ -43,12 +43,20 @@ class redirect_plugin_404manager_test extends DokuWikiTest
         $redirectManager = UrlRedirection::get()
             ->setDataStoreType($dataStoreType);
 
-        if ($redirectManager->isRedirectionPresent(constant_parameters::$PAGE_REDIRECTED_TO_EXTERNAL_WEBSITE)) {
-            $redirectManager->deleteRedirection(constant_parameters::$PAGE_REDIRECTED_TO_EXTERNAL_WEBSITE);
-        }
-
+        $pageIdRedirected = "ToBeRedirected";
         $externalURL = 'http://gerardnico.com';
-        $redirectManager->addRedirection(constant_parameters::$PAGE_REDIRECTED_TO_EXTERNAL_WEBSITE, $externalURL);
+
+        // The redirection should not be present because the test framework create a new database each time
+        if ($redirectManager->isRedirectionPresent($pageIdRedirected)) {
+            $redirectManager->deleteRedirection($pageIdRedirected);
+        }
+        $redirectManager->addRedirection($pageIdRedirected, $externalURL);
+
+        $isRedirectionPresent = $redirectManager->isRedirectionPresent($pageIdRedirected);
+        $this->assertEquals(true, $isRedirectionPresent,"The redirection is present");
+        $redirectionTarget = $redirectManager->getRedirectionTarget($pageIdRedirected);
+        $this->assertNotEquals(false, $redirectionTarget,"The redirection is present - not false");
+        $this->assertEquals($externalURL, $redirectionTarget,"The redirection is present");
 
         // Read only otherwise you are redirected to the Edit Mode
         global $AUTH_ACL;
@@ -56,8 +64,7 @@ class redirect_plugin_404manager_test extends DokuWikiTest
         $AUTH_ACL = file($aclReadOnlyFile);
 
         $request = new TestRequest();
-        $request->get(array('id' => constant_parameters::$PAGE_REDIRECTED_TO_EXTERNAL_WEBSITE), '/doku.php');
-        $response = $request->execute();
+        $response = $request->get(array('id' => $pageIdRedirected), '/doku.php');
 
         $locationHeader = $response->getHeader("Location");
 

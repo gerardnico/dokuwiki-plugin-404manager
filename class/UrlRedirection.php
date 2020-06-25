@@ -93,7 +93,7 @@ class UrlRedirection
     /**
      * Is Redirection of a page Id Present
      * @param string $sourcePageId
-     * @return int
+     * @return boolean
      */
     function isRedirectionPresent($sourcePageId)
     {
@@ -106,15 +106,19 @@ class UrlRedirection
         if ($this->dataStoreType == self::DATA_STORE_TYPE_CONF_FILE) {
 
             if (isset($this->pageRedirections[$sourcePageId])) {
-                return 1;
+                return true;
             } else {
-                return 0;
+                return false;
             }
 
         } else {
 
             $res = $this->sqlite->query("SELECT * FROM redirections where SOURCE = ?", $sourcePageId);
-            return $this->sqlite->res2count($res);
+            if ($this->sqlite->res2count($res) == 1){
+                return true;
+            } else {
+                return false;
+            }
 
         }
 
@@ -293,11 +297,13 @@ class UrlRedirection
     /**
      * Get TargetResource (It can be an external URL as an intern page id
      * @param string $sourcePageId
-     * @return
+     * @return string|boolean - can be false if no data
      * @throws Exception
      */
     function getRedirectionTarget($sourcePageId)
     {
+
+        $sourcePageId = strtolower($sourcePageId);
 
         if ($this->dataStoreType == null) {
             $this->initDataStore();
@@ -305,7 +311,6 @@ class UrlRedirection
 
         if ($this->dataStoreType == self::DATA_STORE_TYPE_CONF_FILE) {
 
-            $sourcePageId = strtolower($sourcePageId);
             return $this->pageRedirections[strtolower($sourcePageId)]['TargetPage'];
 
         } else {

@@ -45,13 +45,6 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
     const NOTHING = 'Nothing';
 
 
-    /*
-     * The event scope is made object
-     */
-    var $event;
-
-
-
     function __construct()
     {
         // enable direct access to language strings
@@ -96,9 +89,6 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
         global $ACT;
         if ($ACT != 'show') return false;
 
-
-        // Event is also used in some sub-function, we make it them object scope
-        $this->event = $event;
 
 
         // Global variable needed in the process
@@ -522,61 +512,7 @@ class action_plugin_404manager_urlmanager extends DokuWiki_Action_Plugin
 
     }
 
-    /**
-     * Add the page with the same page name but in an other location
-     * @param $pageId
-     */
-    private
-    function addToMessagePagesWithSameName($pageId)
-    {
 
-        global $conf;
-
-        $pageName = noNS($pageId);
-        if ($this->getConf('ShowPageNameIsNotUnique') == 1 && $pageName <> $conf['start']) {
-
-            //Search same page name
-            $pagesWithSameName = ft_pageLookup($pageName);
-
-            if (count($pagesWithSameName) > 0) {
-
-                $this->message->setType(Message404::TYPE_WARNING);
-
-                // Assign the value to a variable to be able to use the construct .=
-                if ($this->message->getContent() <> '') {
-                    $this->message->addContent('<br/><br/>');
-                }
-                $this->message->addContent($this->lang['message_pagename_exist_one']);
-                $this->message->addContent('<ul>');
-
-                $i = 0;
-                foreach ($pagesWithSameName as $PageId => $title) {
-                    $i++;
-                    if ($i > 10) {
-                        $this->message->addContent('<li>' .
-                            tpl_link(
-                                wl($pageId) . "&do=search&q=" . rawurldecode($pageName),
-                                "More ...",
-                                'class="" rel="nofollow" title="More..."',
-                                $return = true
-                            ) . '</li>');
-                        break;
-                    }
-                    if ($title == null) {
-                        $title = $PageId;
-                    }
-                    $this->message->addContent('<li>' .
-                        tpl_link(
-                            wl($PageId),
-                            $title,
-                            'class="" rel="nofollow" title="' . $title . '"',
-                            $return = true
-                        ) . '</li>');
-                }
-                $this->message->addContent('</ul>');
-            }
-        }
-    }
 
 
     /**
